@@ -1,9 +1,19 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
   <Folder Name="/Solution Items/">
     <File Path=".config/dotnet-tools.json" />
     <File Path=".gitignore" />
     <File Path="Directory.Packages.props" />
   </Folder>
-  <Project Path="FlightGame.Rendering/FlightGame.Rendering.csproj" />
-  <Project Path="FlightGame/FlightGame.csproj" />
+  <Project Path="FlightGame.Rendering/FlightGame.Rendering.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
+  <Project Path="FlightGame/FlightGame.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
 </Solution>

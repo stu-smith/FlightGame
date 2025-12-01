@@ -72,9 +72,6 @@ public class DebugCamera : ICamera
             _position -= right * MoveSpeed * dt;
         }
 
-        // Keep camera at a fixed height above the ground for now.
-        // This can be replaced later with heightmap sampling if desired.
-        _position.Y = 80f;
     }
 
     public Matrix CreateViewMatrix()

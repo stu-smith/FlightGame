@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <!-- Enable central package management, https://learn.microsoft.com/en-us/nuget/consume-packages/Central-Package-Management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+	<ItemGroup>
+		<PackageVersion Include="MonoGame.Framework.WindowsDX" Version="3.8.4.1" />
+		<PackageVersion Include="MonoGame.Content.Builder.Task" Version="3.8.4.1" />
+	</ItemGroup>
+</Project>

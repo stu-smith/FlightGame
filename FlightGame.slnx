@@ -2,6 +2,7 @@
   <Folder Name="/Solution Items/">
     <File Path=".config/dotnet-tools.json" />
     <File Path=".gitignore" />
+    <File Path="Directory.Packages.props" />
   </Folder>
   <Project Path="FlightGame.Rendering/FlightGame.Rendering.csproj" />
   <Project Path="FlightGame/FlightGame.csproj" />

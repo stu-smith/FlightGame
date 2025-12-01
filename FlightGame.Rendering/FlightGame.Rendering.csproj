@@ -5,9 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Folder Include="Cameras\" />
-  </ItemGroup>
-
+	<ItemGroup>
+		<PackageReference Include="MonoGame.Framework.WindowsDX" />
+	</ItemGroup>
 </Project>

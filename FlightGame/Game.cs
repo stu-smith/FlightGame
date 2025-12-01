@@ -1,8 +1,7 @@
-﻿using Microsoft.Xna.Framework;
+﻿using FlightGame.Rendering.Cameras;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using SharpDX.Direct2D1;
-using SharpDX.Direct3D11;
 using System;
 using CullMode = Microsoft.Xna.Framework.Graphics.CullMode;
 using Effect = Microsoft.Xna.Framework.Graphics.Effect;
@@ -22,7 +21,7 @@ public class Game : Microsoft.Xna.Framework.Game
         public Color Color;
         public Vector3 Normal;
 
-        public readonly static VertexDeclaration VertexDeclaration = new VertexDeclaration
+        public readonly static VertexDeclaration VertexDeclaration = new
         (
             new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
             new VertexElement(sizeof(float) * 3, VertexElementFormat.Color, VertexElementUsage.Color, 0),
@@ -30,11 +29,10 @@ public class Game : Microsoft.Xna.Framework.Game
         );
     }
 
-    private GraphicsDeviceManager _graphics;
+    private readonly GraphicsDeviceManager _graphics;
     private GraphicsDevice? _device;
     private Effect? _effect;
     private VertexPositionColorNormal[] _vertices = [];
-    private Matrix _viewMatrix;
     private Matrix _projectionMatrix;
     private float _angle = 0f;
     private short[] _indices = [];
@@ -43,6 +41,7 @@ public class Game : Microsoft.Xna.Framework.Game
     private float[,] _heightData = new float[,] { };
     private VertexBuffer? _myVertexBuffer;
     private IndexBuffer? _myIndexBuffer;
+    private ICamera _camera = new DebugCamera();
 
     public Game()
     {
@@ -176,7 +175,6 @@ public class Game : Microsoft.Xna.Framework.Game
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        _viewMatrix = Matrix.CreateLookAt(new Vector3(60, 80, -80), new Vector3(0, 0, 0), new Vector3(0, 1, 0));
         _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1.0f, 300.0f);
     }
 
@@ -233,6 +231,8 @@ public class Game : Microsoft.Xna.Framework.Game
             _angle -= 0.05f;
         }
 
+        _camera.Update(gameTime);
+
         base.Update(gameTime);
     }
 
@@ -250,15 +250,19 @@ public class Game : Microsoft.Xna.Framework.Game
 
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
 
-        var rs = new RasterizerState();
-        rs.CullMode = CullMode.None;
-        rs.FillMode = FillMode.Solid;
+        var rs = new RasterizerState
+        {
+            CullMode = CullMode.None,
+            FillMode = FillMode.Solid
+        };
+
         _device.RasterizerState = rs;
 
         // TODO: Add your drawing code here
+        var viewMatrix = _camera.CreateViewMatrix();
         var worldMatrix = Matrix.CreateTranslation(-_terrainWidth / 2.0f, 0, _terrainHeight / 2.0f) * Matrix.CreateRotationY(_angle);
         _effect.CurrentTechnique = _effect.Techniques["Colored"];
-        _effect.Parameters["xView"].SetValue(_viewMatrix);
+        _effect.Parameters["xView"].SetValue(viewMatrix);
         _effect.Parameters["xProjection"].SetValue(_projectionMatrix);
         _effect.Parameters["xWorld"].SetValue(worldMatrix);
 

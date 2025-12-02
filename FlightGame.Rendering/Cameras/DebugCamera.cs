@@ -71,7 +71,6 @@ public class DebugCamera : ICamera
         {
             _position -= right * MoveSpeed * dt;
         }
-
     }
 
     public Matrix CreateViewMatrix()

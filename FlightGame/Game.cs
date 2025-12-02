@@ -7,7 +7,6 @@ using CullMode = Microsoft.Xna.Framework.Graphics.CullMode;
 using Effect = Microsoft.Xna.Framework.Graphics.Effect;
 using FillMode = Microsoft.Xna.Framework.Graphics.FillMode;
 using RasterizerState = Microsoft.Xna.Framework.Graphics.RasterizerState;
-using SpriteBatch = Microsoft.Xna.Framework.Graphics.SpriteBatch;
 using Texture2D = Microsoft.Xna.Framework.Graphics.Texture2D;
 using VertexBuffer = Microsoft.Xna.Framework.Graphics.VertexBuffer;
 
@@ -41,7 +40,8 @@ public class Game : Microsoft.Xna.Framework.Game
     private float[,] _heightData = new float[,] { };
     private VertexBuffer? _myVertexBuffer;
     private IndexBuffer? _myIndexBuffer;
-    private ICamera _camera = new DebugCamera();
+    private readonly ICamera _camera = new DebugCamera();
+    private Vector3 _terrainCenter;
 
     public Game()
     {
@@ -106,6 +106,13 @@ public class Game : Microsoft.Xna.Framework.Game
                 }
             }
         }
+
+        // Center of the terrain in world coordinates (based on vertex spacing of 4 units)
+        _terrainCenter = new Vector3(
+            (_terrainWidth - 1) * 2f,
+            0f,
+            -(_terrainHeight - 1) * 2f
+        );
     }
 
     private void SetUpIndices()
@@ -175,7 +182,11 @@ public class Game : Microsoft.Xna.Framework.Game
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1.0f, 300.0f);
+        _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(
+            MathHelper.PiOver4,
+            _device.Viewport.AspectRatio,
+            1.0f,
+            2000.0f);
     }
 
     private void LoadHeightData(Texture2D heightMap)
@@ -191,7 +202,7 @@ public class Game : Microsoft.Xna.Framework.Game
         {
             for (var y = 0; y < _terrainHeight; y++)
             {
-                _heightData[x, y] = heightMapColors[x + y * _terrainWidth].R / 5.0f;
+                _heightData[x, y] = heightMapColors[x + y * _terrainWidth].R / 2.0f;
             }
         }
     }
@@ -222,11 +233,11 @@ public class Game : Microsoft.Xna.Framework.Game
 
         // TODO: Add your update logic here
         var keyState = Keyboard.GetState();
-        if (keyState.IsKeyDown(Keys.Left))
+        if (keyState.IsKeyDown(Keys.Q))
         {
             _angle += 0.05f;
         }
-        if (keyState.IsKeyDown(Keys.Right))
+        if (keyState.IsKeyDown(Keys.E))
         {
             _angle -= 0.05f;
         }
@@ -260,7 +271,13 @@ public class Game : Microsoft.Xna.Framework.Game
 
         // TODO: Add your drawing code here
         var viewMatrix = _camera.CreateViewMatrix();
-        var worldMatrix = Matrix.CreateTranslation(-_terrainWidth / 2.0f, 0, _terrainHeight / 2.0f) * Matrix.CreateRotationY(_angle);
+        
+        // Rotate the world around the center of the terrain instead of the global origin
+        var worldMatrix =
+            Matrix.CreateTranslation(-_terrainCenter) *
+            Matrix.CreateRotationY(_angle) *
+            Matrix.CreateTranslation(_terrainCenter);
+        
         _effect.CurrentTechnique = _effect.Techniques["Colored"];
         _effect.Parameters["xView"].SetValue(viewMatrix);
         _effect.Parameters["xProjection"].SetValue(_projectionMatrix);

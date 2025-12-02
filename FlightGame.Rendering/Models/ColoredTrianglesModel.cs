@@ -94,11 +94,13 @@ public class ColoredTrianglesModel
         _vertexBuffer.SetData(_vertices);
 
         // Populate index buffer (one triangle per three sequential vertices)
-        _indices = new short[_vertices.Length];
+        _indices = new short[triangles.Count * 3];
         
-        for (short i = 0; i < _indices.Length; i++)
+        for (var i = 0; i < triangles.Count; i++)
         {
-            _indices[i] = i;
+            _indices[i * 3 + 0] = (short)(i * 3 + 0);
+            _indices[i * 3 + 1] = (short)(i * 3 + 1);
+            _indices[i * 3 + 2] = (short)(i * 3 + 2);
         }
 
         _indexBuffer = new IndexBuffer(

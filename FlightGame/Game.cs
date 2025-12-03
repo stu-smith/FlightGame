@@ -20,9 +20,6 @@ public class Game : Microsoft.Xna.Framework.Game
     private Effect? _effect;
     private Matrix _projectionMatrix;
     private float _angle = 0f;
-    private int _terrainWidth = 4;
-    private int _terrainHeight = 3;
-    private float[,] _heightData = new float[,] { };
     private readonly ICamera _camera = new DebugCamera();
     private Vector3 _terrainCenter;
     private ColoredTrianglesModel? _terrainModel;
@@ -30,6 +27,7 @@ public class Game : Microsoft.Xna.Framework.Game
     public Game()
     {
         _graphics = new GraphicsDeviceManager(this);
+
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
     }
@@ -46,28 +44,32 @@ public class Game : Microsoft.Xna.Framework.Game
         base.Initialize();
     }
 
-    private void BuildTerrainModel()
+    private void BuildTerrainModel(float[,] heightData)
     {
         if (_device == null)
         {
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
+        var terrainWidth = heightData.GetLength(0);
+        var terrainHeight = heightData.GetLength(1);
+
         // Calculate min/max height for color determination
         var minHeight = float.MaxValue;
         var maxHeight = float.MinValue;
-        for (var x = 0; x < _terrainWidth; x++)
+
+        for (var x = 0; x < terrainWidth; x++)
         {
-            for (var y = 0; y < _terrainHeight; y++)
+            for (var y = 0; y < terrainHeight; y++)
             {
-                if (_heightData[x, y] < minHeight)
+                if (heightData[x, y] < minHeight)
                 {
-                    minHeight = _heightData[x, y];
+                    minHeight = heightData[x, y];
                 }
 
-                if (_heightData[x, y] > maxHeight)
+                if (heightData[x, y] > maxHeight)
                 {
-                    maxHeight = _heightData[x, y];
+                    maxHeight = heightData[x, y];
                 }
             }
         }
@@ -96,16 +98,16 @@ public class Game : Microsoft.Xna.Framework.Game
         // Helper function to get position for a grid point
         Vector3 GetPosition(int x, int y)
         {
-            return new Vector3(x * 2, _heightData[x, y], -y * 2);
+            return new Vector3(x * 2, heightData[x, y], -y * 2);
         }
 
         // Build triangles directly from height data
-        var triangleCount = (_terrainWidth - 1) * (_terrainHeight - 1) * 2;
+        var triangleCount = (terrainWidth - 1) * (terrainHeight - 1) * 2;
         var triangles = new List<ColoredTrianglesModel.Triangle>(triangleCount);
 
-        for (var y = 0; y < _terrainHeight - 1; y++)
+        for (var y = 0; y < terrainHeight - 1; y++)
         {
-            for (var x = 0; x < _terrainWidth - 1; x++)
+            for (var x = 0; x < terrainWidth - 1; x++)
             {
                 // Get positions for the four corners of the quad
                 var lowerLeft = GetPosition(x, y);
@@ -114,10 +116,10 @@ public class Game : Microsoft.Xna.Framework.Game
                 var topRight = GetPosition(x + 1, y + 1);
 
                 // Get colors for each corner
-                var colorLL = GetColorForHeight(_heightData[x, y]);
-                var colorLR = GetColorForHeight(_heightData[x + 1, y]);
-                var colorTL = GetColorForHeight(_heightData[x, y + 1]);
-                var colorTR = GetColorForHeight(_heightData[x + 1, y + 1]);
+                var colorLL = GetColorForHeight(heightData[x, y]);
+                var colorLR = GetColorForHeight(heightData[x + 1, y]);
+                var colorTL = GetColorForHeight(heightData[x, y + 1]);
+                var colorTR = GetColorForHeight(heightData[x + 1, y + 1]);
 
                 // First triangle: topLeft, lowerRight, lowerLeft
                 triangles.Add(new ColoredTrianglesModel.Triangle(
@@ -131,11 +133,11 @@ public class Game : Microsoft.Xna.Framework.Game
             }
         }
 
-        // Center of the terrain in world coordinates (based on vertex spacing of 4 units)
+        // Center of the terrain in world coordinates (based on vertex spacing of 2 units)
         _terrainCenter = new Vector3(
-            (_terrainWidth - 1) * 2f,
+            terrainWidth - 1,
             0f,
-            -(_terrainHeight - 1) * 2f
+            -terrainHeight - 1
         );
 
         _terrainModel = new ColoredTrianglesModel(_device, triangles);
@@ -155,27 +157,29 @@ public class Game : Microsoft.Xna.Framework.Game
             2000.0f);
     }
 
-    private void LoadHeightData(Texture2D heightMap)
+    private static float[,] LoadHeightData(Texture2D heightMap)
     {
-        _terrainWidth = heightMap.Width;
-        _terrainHeight = heightMap.Height;
+        var terrainWidth = heightMap.Width;
+        var terrainHeight = heightMap.Height;
 
-        var heightMapColors = new Color[_terrainWidth * _terrainHeight];
+        var heightMapColors = new Color[terrainWidth * terrainHeight];
         heightMap.GetData(heightMapColors);
 
-        _heightData = new float[_terrainWidth, _terrainHeight];
-        for (var x = 0; x < _terrainWidth; x++)
+        var heightData = new float[terrainWidth, terrainHeight];
+
+        for (var x = 0; x < terrainWidth; x++)
         {
-            for (var y = 0; y < _terrainHeight; y++)
+            for (var y = 0; y < terrainHeight; y++)
             {
-                _heightData[x, y] = heightMapColors[x + y * _terrainWidth].R / 2.0f;
+                heightData[x, y] = heightMapColors[x + y * terrainWidth].R / 2.0f;
             }
         }
+
+        return heightData;
     }
 
     protected override void LoadContent()
     {
-        // TODO: use this.Content to load your game content here
         _device = _graphics.GraphicsDevice;
 
         _effect = Content.Load<Effect>("effects");
@@ -183,8 +187,9 @@ public class Game : Microsoft.Xna.Framework.Game
         SetUpCamera();
 
         var heightMap = Content.Load<Texture2D>("heightmap");
-        LoadHeightData(heightMap);
-        BuildTerrainModel();
+        var heightData = LoadHeightData(heightMap);
+        
+        BuildTerrainModel(heightData);
     }
 
     protected override void Update(GameTime gameTime)
@@ -226,7 +231,7 @@ public class Game : Microsoft.Xna.Framework.Game
 
         var rs = new RasterizerState
         {
-            CullMode = CullMode.None,
+            CullMode = CullMode.CullCounterClockwiseFace,
             FillMode = FillMode.Solid
         };
 
@@ -249,7 +254,7 @@ public class Game : Microsoft.Xna.Framework.Game
         var lightDirection = new Vector3(1.0f, -1.0f, -1.0f);
         lightDirection.Normalize();
         _effect.Parameters["xLightDirection"].SetValue(lightDirection);
-        _effect.Parameters["xAmbient"].SetValue(0.1f);
+        _effect.Parameters["xAmbient"].SetValue(0.3f);
         _effect.Parameters["xEnableLighting"].SetValue(true);
 
         _terrainModel.Render(_device, _effect);

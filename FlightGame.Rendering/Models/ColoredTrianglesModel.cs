@@ -9,7 +9,7 @@ namespace FlightGame.Rendering.Models;
 public class ColoredTrianglesModel
 {
     private readonly VertexPositionColorNormal[] _vertices = [];
-    private readonly short[] _indices = [];
+    private readonly int[] _indices = [];
     private VertexBuffer _vertexBuffer;
     private IndexBuffer _indexBuffer;
 
@@ -94,18 +94,18 @@ public class ColoredTrianglesModel
         _vertexBuffer.SetData(_vertices);
 
         // Populate index buffer (one triangle per three sequential vertices)
-        _indices = new short[triangles.Count * 3];
+        _indices = new int[triangles.Count * 3];
         
         for (var i = 0; i < triangles.Count; i++)
         {
-            _indices[i * 3 + 0] = (short)(i * 3 + 0);
-            _indices[i * 3 + 1] = (short)(i * 3 + 1);
-            _indices[i * 3 + 2] = (short)(i * 3 + 2);
+            _indices[i * 3 + 0] = i * 3 + 0;
+            _indices[i * 3 + 1] = i * 3 + 1;
+            _indices[i * 3 + 2] = i * 3 + 2;
         }
 
         _indexBuffer = new IndexBuffer(
             graphicsDevice,
-            IndexElementSize.SixteenBits,
+            IndexElementSize.ThirtyTwoBits,
             _indices.Length,
             BufferUsage.WriteOnly);
 

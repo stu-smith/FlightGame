@@ -9,7 +9,4 @@
 	<ItemGroup>
 		<PackageReference Include="MonoGame.Framework.WindowsDX" />
 	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Landscape\" />
-	</ItemGroup>
 </Project>

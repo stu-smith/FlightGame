@@ -28,7 +28,6 @@ public class Game : Microsoft.Xna.Framework.Game
     {
         _graphics = new GraphicsDeviceManager(this);
 
-        Content.RootDirectory = "Content";
         IsMouseVisible = true;
     }
 
@@ -203,11 +202,11 @@ public class Game : Microsoft.Xna.Framework.Game
         var keyState = Keyboard.GetState();
         if (keyState.IsKeyDown(Keys.Q))
         {
-            _angle += 0.05f;
+            _angle += 0.01f;
         }
         if (keyState.IsKeyDown(Keys.E))
         {
-            _angle -= 0.05f;
+            _angle -= 0.01f;
         }
 
         _camera.Update(gameTime);

@@ -1,6 +1,5 @@
 <Solution>
   <Configurations>
-    <Platform Name="Any CPU" />
     <Platform Name="x64" />
   </Configurations>
   <Folder Name="/Solution Items/">
@@ -8,12 +7,14 @@
     <File Path=".gitignore" />
     <File Path="Directory.Packages.props" />
   </Folder>
+  <Project Path="FlightGame.Content/FlightGame.Content.csproj" Id="55a2a156-80dd-46cb-b006-f7cf378a84f4">
+    <Platform Project="x64" />
+    <Build Solution="Release|*" Project="false" />
+  </Project>
   <Project Path="FlightGame.Rendering/FlightGame.Rendering.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-    <Build Solution="*|Any CPU" Project="false" />
+    <Platform Project="x64" />
   </Project>
   <Project Path="FlightGame/FlightGame.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-    <Build Solution="*|Any CPU" Project="false" />
+    <Platform Project="x64" />
   </Project>
 </Solution>

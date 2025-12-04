@@ -1,4 +1,5 @@
 ﻿using FlightGame.Rendering.Cameras;
+using FlightGame.Rendering.Landscape;
 using FlightGame.Rendering.Models;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -45,6 +46,10 @@ public class Game : Microsoft.Xna.Framework.Game
 
     private void BuildTerrainModel(float[,] heightData)
     {
+        var terrainModel = new LandscapeModel();
+
+        terrainModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 20);
+
         if (_device == null)
         {
             throw new InvalidOperationException("Graphics device is not initialized.");

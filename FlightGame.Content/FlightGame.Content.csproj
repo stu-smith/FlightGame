@@ -16,5 +16,10 @@
 	<ItemGroup>
 		<MonoGameContentReference Include="Content.mgcb" />
 	</ItemGroup>
+	<ItemGroup>
+	  <None Update="HeightMaps\TestIsland.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
 
 </Project>

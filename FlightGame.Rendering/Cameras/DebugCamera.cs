@@ -5,12 +5,12 @@ namespace FlightGame.Rendering.Cameras;
 
 public class DebugCamera : ICamera
 {
-    private Vector3 _position = new(60f, 80f, -80f);
+    private Vector3 _position = new(60f, 800f, -1000f);
     private float _yaw;
-    private float _pitch;
+    private float _pitch = -0.5f;
 
-    private const float MoveSpeed = 50f;   // units per second
-    private const float TurnSpeed = 2f;    // radians per second
+    private const float _moveSpeed = 50f;   // units per second
+    private const float _turnSpeed = 2f;    // radians per second
 
     public void Update(GameTime gameTime)
     {
@@ -20,21 +20,21 @@ public class DebugCamera : ICamera
         // Turn left/right (yaw) using the arrow keys.
         if (keyboard.IsKeyDown(Keys.Left))
         {
-            _yaw += TurnSpeed * dt;
+            _yaw += _turnSpeed * dt;
         }
         if (keyboard.IsKeyDown(Keys.Right))
         {
-            _yaw -= TurnSpeed * dt;
+            _yaw -= _turnSpeed * dt;
         }
 
         // Pitch up/down using the arrow keys.
         if (keyboard.IsKeyDown(Keys.Up))
         {
-            _pitch += TurnSpeed * dt;
+            _pitch += _turnSpeed * dt;
         }
         if (keyboard.IsKeyDown(Keys.Down))
         {
-            _pitch -= TurnSpeed * dt;
+            _pitch -= _turnSpeed * dt;
         }
 
         _pitch = MathHelper.Clamp(_pitch, -MathHelper.PiOver2 + 0.01f, MathHelper.PiOver2 - 0.01f);
@@ -55,21 +55,21 @@ public class DebugCamera : ICamera
         // Move forward/backward with W/S.
         if (keyboard.IsKeyDown(Keys.W))
         {
-            _position += forward * MoveSpeed * dt;
+            _position += forward * _moveSpeed * dt;
         }
         if (keyboard.IsKeyDown(Keys.S))
         {
-            _position -= forward * MoveSpeed * dt;
+            _position -= forward * _moveSpeed * dt;
         }
 
         // Strafe left/right with A/D.
         if (keyboard.IsKeyDown(Keys.D))
         {
-            _position += right * MoveSpeed * dt;
+            _position += right * _moveSpeed * dt;
         }
         if (keyboard.IsKeyDown(Keys.A))
         {
-            _position -= right * MoveSpeed * dt;
+            _position -= right * _moveSpeed * dt;
         }
     }
 

@@ -70,15 +70,30 @@ public class LandscapeChunk(
                 colorTL ??= Color.Pink;
                 colorTR ??= Color.Pink;
 
-                // First triangle: topLeft, lowerRight, lowerLeft
-                triangles.Add(new ColoredTrianglesModel.Triangle(
-                    topLeft, lowerRight, lowerLeft,
-                    colorTL.Value, colorLR.Value, colorLL.Value));
+                if ((x + z % 2) == 0)
+                {
+                    // First triangle: topLeft, lowerRight, lowerLeft
+                    triangles.Add(new ColoredTrianglesModel.Triangle(
+                        topLeft, lowerRight, lowerLeft,
+                        colorTL.Value, colorLR.Value, colorLL.Value));
 
-                // Second triangle: topLeft, topRight, lowerRight
-                triangles.Add(new ColoredTrianglesModel.Triangle(
-                    topLeft, topRight, lowerRight,
-                    colorTL.Value, colorTR.Value, colorLR.Value));
+                    // Second triangle: topLeft, topRight, lowerRight
+                    triangles.Add(new ColoredTrianglesModel.Triangle(
+                        topLeft, topRight, lowerRight,
+                        colorTL.Value, colorTR.Value, colorLR.Value));
+                }
+                else
+                {
+                    // First triangle: topLeft, topRight, lowerLeft
+                    triangles.Add(new ColoredTrianglesModel.Triangle(
+                        topLeft, topRight, lowerLeft,
+                        colorTL.Value, colorTR.Value, colorLL.Value));
+
+                    // Second triangle: lowerLeft, topRight, lowerRight
+                    triangles.Add(new ColoredTrianglesModel.Triangle(
+                        lowerLeft, topRight, lowerRight,
+                        colorLL.Value, colorTR.Value, colorLR.Value));
+                }
             }
         }
 

@@ -37,7 +37,7 @@ public class Game : Microsoft.Xna.Framework.Game
         _graphics.IsFullScreen = false;
         _graphics.ApplyChanges();
 
-        Window.Title = "Riemer's MonoGame Tutorials -- 3D Series 1";
+        Window.Title = "FlightGame";
 
         base.Initialize();
     }
@@ -49,9 +49,20 @@ public class Game : Microsoft.Xna.Framework.Game
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        var terrainModel = new LandscapeModel();
+        var rnd = new Random();
 
-        terrainModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 50);
+        var landscapeModel = new LandscapeModel();
+
+        landscapeModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 100);
+
+        for (var i = 0; i < 30; i++)
+        {
+            var x = rnd.Next(landscapeModel.MinLandscapeX, landscapeModel.MaxLandscapeX);
+            var y = rnd.Next(landscapeModel.MinLandscapeY, landscapeModel.MaxLandscapeY);
+            var heightScaling = (float)(rnd.NextDouble() * 50.0 + 10.0);
+
+            landscapeModel.AddHeightMap("HeightMaps/TestIsland", x, y, heightScaling);
+        }
 
         // Define color stops based on height: sandy at bottom, grassy in middle, snowy at top
         var colorStops = new List<(float Height, Color Color)>
@@ -67,9 +78,9 @@ public class Game : Microsoft.Xna.Framework.Game
             (50f, Color.White)               // Pure white (snow at peak)
         };
 
-        terrainModel.AutoAssignColors(colorStops);
+        landscapeModel.AutoAssignColors(colorStops);
 
-        _landscapeChunks = terrainModel.CreateChunks();
+        _landscapeChunks = landscapeModel.CreateChunks();
 
         foreach (var chunk in _landscapeChunks)
         {
@@ -88,7 +99,7 @@ public class Game : Microsoft.Xna.Framework.Game
             MathHelper.PiOver4,
             _device.Viewport.AspectRatio,
             1.0f,
-            2000.0f);
+            20000.0f);
     }
 
     protected override void LoadContent()

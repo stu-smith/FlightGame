@@ -1,4 +1,4 @@
-﻿using FlightGame.Rendering.Core;
+using FlightGame.Rendering.Core;
 using Microsoft.Xna.Framework;
 using System.Reflection;
 
@@ -8,6 +8,17 @@ public class LandscapeModel
 {
     private const int _mapSize = 5_000;
     private const int _chunkSize = 100;
+    private const float _worldScaling = 5f;
+
+    public int MinWorldX => -_mapSize / 2 * (int)_worldScaling;
+    public int MaxWorldX => _mapSize / 2 * (int)_worldScaling;
+    public int MinWorldY => -_mapSize / 2 * (int)_worldScaling;
+    public int MaxWorldY => _mapSize / 2 * (int)_worldScaling;
+
+    public int MinLandscapeX => -_mapSize / 2;
+    public int MaxLandscapeX => _mapSize / 2;
+    public int MinLandscapeY => -_mapSize / 2;
+    public int MaxLandscapeY => _mapSize / 2;
 
     private readonly Sparse2dArray<LandscapePoint> _points = new(-_mapSize / 2, _mapSize / 2, -_mapSize / 2, _mapSize / 2);
 
@@ -53,7 +64,7 @@ public class LandscapeModel
 
                 var pixel = bitmap.GetPixel(x, y);
                 var intensity = (pixel.R + pixel.G + pixel.B) / (3f * 255f);
-                var height = intensity * heightScaling;
+                var height = intensity * heightScaling * _worldScaling;
 
                 var currentPoint = _points[mapX, mapY];
                 var cumulativeHeight = (currentPoint?.Height ?? 0f) + height;
@@ -126,6 +137,7 @@ public class LandscapeModel
                 }
 
                 var color = GetColorForHeight(point.Height);
+
                 _points[x, y] = point with { Color = color };
             }
         }
@@ -171,10 +183,10 @@ public class LandscapeModel
                     chunkMaxX,
                     chunkMinY,
                     chunkMaxY,
-                    chunkMinX,
-                    chunkMaxX,
-                    chunkMinY,
-                    chunkMaxY));
+                    chunkMinX * _worldScaling,
+                    chunkMaxX * _worldScaling,
+                    chunkMinY * _worldScaling,
+                    chunkMaxY * _worldScaling));
             }
         }
 

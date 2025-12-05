@@ -6,7 +6,8 @@ namespace FlightGame.Rendering.Landscape;
 
 public class LandscapeModel
 {
-    private const int _mapSize = 10_000;
+    private const int _mapSize = 5_000;
+    private const int _chunkSize = 100;
 
     private readonly Sparse2dArray<LandscapePoint> _points = new(-_mapSize / 2, _mapSize / 2, -_mapSize / 2, _mapSize / 2);
 
@@ -128,6 +129,56 @@ public class LandscapeModel
                 _points[x, y] = point with { Color = color };
             }
         }
+    }
+
+    public bool HasData(int minX, int maxX, int minY, int maxY)
+    {
+        for (var x = minX; x <= maxX; x++)
+        {
+            for (var y = minY; y <= maxY; y++)
+            {
+                if (_points[x, y] is not null)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public IReadOnlyList<LandscapeChunk> CreateChunks()
+    {
+        var chunks = new List<LandscapeChunk>();
+
+        for (var chunkMinX = _points.MinX; chunkMinX < _points.MaxX; chunkMinX += _chunkSize)
+        {
+            var chunkMaxX = Math.Min(chunkMinX + _chunkSize, _points.MaxX);
+
+            for (var chunkMinY = _points.MinY; chunkMinY < _points.MaxY; chunkMinY += _chunkSize)
+            {
+                var chunkMaxY = Math.Min(chunkMinY + _chunkSize, _points.MaxY);
+
+                // Skip empty chunks – this keeps the list smaller when most of the map is empty.
+                if (!HasData(chunkMinX, chunkMaxX, chunkMinY, chunkMaxY))
+                {
+                    continue;
+                }
+
+                chunks.Add(new LandscapeChunk(
+                    _points,
+                    chunkMinX,
+                    chunkMaxX,
+                    chunkMinY,
+                    chunkMaxY,
+                    chunkMinX,
+                    chunkMaxX,
+                    chunkMinY,
+                    chunkMaxY));
+            }
+        }
+
+        return chunks;
     }
 
     private static System.Drawing.Bitmap LoadHeightMapBitmap(Assembly? assembly, string resourceName)

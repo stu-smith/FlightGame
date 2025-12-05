@@ -1,6 +1,5 @@
 ﻿using FlightGame.Rendering.Cameras;
 using FlightGame.Rendering.Landscape;
-using FlightGame.Rendering.Models;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -22,8 +21,7 @@ public class Game : Microsoft.Xna.Framework.Game
     private Matrix _projectionMatrix;
     private float _angle = 0f;
     private readonly ICamera _camera = new DebugCamera();
-    private Vector3 _terrainCenter;
-    private ColoredTrianglesModel? _terrainModel;
+    private IReadOnlyList<LandscapeChunk> _landscapeChunks = [];
 
     public Game()
     {
@@ -44,112 +42,44 @@ public class Game : Microsoft.Xna.Framework.Game
         base.Initialize();
     }
 
-    private void BuildTerrainModel(float[,] heightData)
+    private void BuildTerrainModel()
     {
-        var terrainModel = new LandscapeModel();
-
-        terrainModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 20);
-
         if (_device == null)
         {
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        var terrainWidth = heightData.GetLength(0);
-        var terrainHeight = heightData.GetLength(1);
+        var terrainModel = new LandscapeModel();
 
-        // Calculate min/max height for color determination
-        var minHeight = float.MaxValue;
-        var maxHeight = float.MinValue;
+        terrainModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 50);
 
-        for (var x = 0; x < terrainWidth; x++)
+        // Define color stops based on height: sandy at bottom, grassy in middle, snowy at top
+        var colorStops = new List<(float Height, Color Color)>
         {
-            for (var y = 0; y < terrainHeight; y++)
-            {
-                if (heightData[x, y] < minHeight)
-                {
-                    minHeight = heightData[x, y];
-                }
+            (0f, new (238, 203, 173)),  // Sandy beige at sea level
+            (5f, new (210, 180, 140)),  // Light sandy brown
+            (10f, new (139, 115, 85)),  // Medium sandy brown
+            (15f, new (34, 139, 34)),   // Forest green (transition to grass)
+            (25f, new (0, 128, 0)),     // Dark green (grass)
+            (35f, new (144, 238, 144)), // Light green (higher grass)
+            (40f, new (192, 192, 192)), // Light gray (rocky/snow transition)
+            (45f, new (245, 245, 255)), // Light blue-white (snow)
+            (50f, Color.White)               // Pure white (snow at peak)
+        };
 
-                if (heightData[x, y] > maxHeight)
-                {
-                    maxHeight = heightData[x, y];
-                }
-            }
-        }
+        terrainModel.AutoAssignColors(colorStops);
 
-        // Helper function to get color based on height
-        Color GetColorForHeight(float height)
+        _landscapeChunks = terrainModel.CreateChunks();
+
+        foreach (var chunk in _landscapeChunks)
         {
-            if (height < minHeight + (maxHeight - minHeight) / 4)
-            {
-                return Color.Blue;
-            }
-            else if (height < minHeight + (maxHeight - minHeight) * 2 / 4)
-            {
-                return Color.Green;
-            }
-            else if (height < minHeight + (maxHeight - minHeight) * 3 / 4)
-            {
-                return Color.Brown;
-            }
-            else
-            {
-                return Color.White;
-            }
+            chunk.BuildModel(_device);
         }
-
-        // Helper function to get position for a grid point
-        Vector3 GetPosition(int x, int y)
-        {
-            return new Vector3(x * 2, heightData[x, y], -y * 2);
-        }
-
-        // Build triangles directly from height data
-        var triangleCount = (terrainWidth - 1) * (terrainHeight - 1) * 2;
-        var triangles = new List<ColoredTrianglesModel.Triangle>(triangleCount);
-
-        for (var y = 0; y < terrainHeight - 1; y++)
-        {
-            for (var x = 0; x < terrainWidth - 1; x++)
-            {
-                // Get positions for the four corners of the quad
-                var lowerLeft = GetPosition(x, y);
-                var lowerRight = GetPosition(x + 1, y);
-                var topLeft = GetPosition(x, y + 1);
-                var topRight = GetPosition(x + 1, y + 1);
-
-                // Get colors for each corner
-                var colorLL = GetColorForHeight(heightData[x, y]);
-                var colorLR = GetColorForHeight(heightData[x + 1, y]);
-                var colorTL = GetColorForHeight(heightData[x, y + 1]);
-                var colorTR = GetColorForHeight(heightData[x + 1, y + 1]);
-
-                // First triangle: topLeft, lowerRight, lowerLeft
-                triangles.Add(new ColoredTrianglesModel.Triangle(
-                    topLeft, lowerRight, lowerLeft,
-                    colorTL, colorLR, colorLL));
-
-                // Second triangle: topLeft, topRight, lowerRight
-                triangles.Add(new ColoredTrianglesModel.Triangle(
-                    topLeft, topRight, lowerRight,
-                    colorTL, colorTR, colorLR));
-            }
-        }
-
-        // Center of the terrain in world coordinates (based on vertex spacing of 2 units)
-        _terrainCenter = new Vector3(
-            terrainWidth - 1,
-            0f,
-            -terrainHeight - 1
-        );
-
-        _terrainModel = new ColoredTrianglesModel(_device, triangles);
     }
 
     private void SetUpCamera()
     {
-        if(_device == null)
+        if (_device == null)
         {
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
@@ -161,27 +91,6 @@ public class Game : Microsoft.Xna.Framework.Game
             2000.0f);
     }
 
-    private static float[,] LoadHeightData(Texture2D heightMap)
-    {
-        var terrainWidth = heightMap.Width;
-        var terrainHeight = heightMap.Height;
-
-        var heightMapColors = new Color[terrainWidth * terrainHeight];
-        heightMap.GetData(heightMapColors);
-
-        var heightData = new float[terrainWidth, terrainHeight];
-
-        for (var x = 0; x < terrainWidth; x++)
-        {
-            for (var y = 0; y < terrainHeight; y++)
-            {
-                heightData[x, y] = heightMapColors[x + y * terrainWidth].R / 2.0f;
-            }
-        }
-
-        return heightData;
-    }
-
     protected override void LoadContent()
     {
         _device = _graphics.GraphicsDevice;
@@ -190,10 +99,7 @@ public class Game : Microsoft.Xna.Framework.Game
 
         SetUpCamera();
 
-        var heightMap = Content.Load<Texture2D>("heightmap");
-        var heightData = LoadHeightData(heightMap);
-        
-        BuildTerrainModel(heightData);
+        BuildTerrainModel();
     }
 
     protected override void Update(GameTime gameTime)
@@ -226,16 +132,16 @@ public class Game : Microsoft.Xna.Framework.Game
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        if(_effect == null || _terrainModel == null)
+        if (_effect == null)
         {
-            throw new InvalidOperationException("Effect or terrain model is not initialized.");
+            throw new InvalidOperationException("Effect is not initialized.");
         }
 
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
 
         var rs = new RasterizerState
         {
-            CullMode = CullMode.CullCounterClockwiseFace,
+            CullMode = CullMode.CullClockwiseFace,
             FillMode = FillMode.Solid
         };
 
@@ -243,13 +149,10 @@ public class Game : Microsoft.Xna.Framework.Game
 
         // TODO: Add your drawing code here
         var viewMatrix = _camera.CreateViewMatrix();
-        
+
         // Rotate the world around the center of the terrain instead of the global origin
-        var worldMatrix =
-            Matrix.CreateTranslation(-_terrainCenter) *
-            Matrix.CreateRotationY(_angle) *
-            Matrix.CreateTranslation(_terrainCenter);
-        
+        var worldMatrix = Matrix.CreateRotationY(_angle);
+
         _effect.CurrentTechnique = _effect.Techniques["Colored"];
         _effect.Parameters["xView"].SetValue(viewMatrix);
         _effect.Parameters["xProjection"].SetValue(_projectionMatrix);
@@ -261,7 +164,10 @@ public class Game : Microsoft.Xna.Framework.Game
         _effect.Parameters["xAmbient"].SetValue(0.3f);
         _effect.Parameters["xEnableLighting"].SetValue(true);
 
-        _terrainModel.Render(_device, _effect);
+        foreach (var chunk in _landscapeChunks)
+        {
+            chunk.Render(_device, _effect);
+        }
 
         base.Draw(gameTime);
     }

@@ -1,4 +1,4 @@
-﻿using FlightGame.Rendering.Cameras;
+using FlightGame.Rendering.Cameras;
 using FlightGame.Rendering.Landscape;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -9,7 +9,8 @@ using CullMode = Microsoft.Xna.Framework.Graphics.CullMode;
 using Effect = Microsoft.Xna.Framework.Graphics.Effect;
 using FillMode = Microsoft.Xna.Framework.Graphics.FillMode;
 using RasterizerState = Microsoft.Xna.Framework.Graphics.RasterizerState;
-using Texture2D = Microsoft.Xna.Framework.Graphics.Texture2D;
+using SpriteFont = Microsoft.Xna.Framework.Graphics.SpriteFont;
+using FlightGame.Rendering.Core;
 
 namespace FlightGame;
 
@@ -21,7 +22,10 @@ public class Game : Microsoft.Xna.Framework.Game
     private Matrix _projectionMatrix;
     private float _angle = 0f;
     private readonly ICamera _camera = new DebugCamera();
+    private readonly PerformanceCounter _performanceCounter = new();
     private IReadOnlyList<LandscapeChunk> _landscapeChunks = [];
+    private SpriteFont? _font;
+    private SpriteBatch? _spriteBatch;
 
     public Game()
     {
@@ -107,6 +111,8 @@ public class Game : Microsoft.Xna.Framework.Game
         _device = _graphics.GraphicsDevice;
 
         _effect = Content.Load<Effect>("effects");
+        _font = Content.Load<SpriteFont>("Fonts/DefaultFont");
+        _spriteBatch = new SpriteBatch(_device);
 
         SetUpCamera();
 
@@ -132,6 +138,8 @@ public class Game : Microsoft.Xna.Framework.Game
         }
 
         _camera.Update(gameTime);
+
+        _performanceCounter?.Update(gameTime);
 
         base.Update(gameTime);
     }
@@ -175,9 +183,35 @@ public class Game : Microsoft.Xna.Framework.Game
         _effect.Parameters["xAmbient"].SetValue(0.3f);
         _effect.Parameters["xEnableLighting"].SetValue(true);
 
+        _performanceCounter.BeginFrame();
+
         foreach (var chunk in _landscapeChunks)
         {
-            chunk.Render(_device, _effect);
+            chunk.Render(_device, _effect, _performanceCounter);
+        }
+
+        _performanceCounter.EndFrame();
+
+        // Draw performance stats in top-right corner
+        if (_spriteBatch != null && _font != null && _performanceCounter != null)
+        {
+            _spriteBatch.Begin();
+            
+            var fpsText = $"FPS: {_performanceCounter.Fps:F1}";
+            var triangleText = $"Triangles: {_performanceCounter.TriangleCount:N0}";
+            
+            var fpsSize = _font.MeasureString(fpsText);
+            var triangleSize = _font.MeasureString(triangleText);
+            var padding = 10f;
+            var lineHeight = fpsSize.Y + 5f;
+            
+            var screenWidth = _device.Viewport.Width;
+            var position = new Vector2(screenWidth - Math.Max(fpsSize.X, triangleSize.X) - padding, padding);
+            
+            _spriteBatch.DrawString(_font, fpsText, position, Color.White);
+            _spriteBatch.DrawString(_font, triangleText, position + new Vector2(0, lineHeight), Color.White);
+            
+            _spriteBatch.End();
         }
 
         base.Draw(gameTime);

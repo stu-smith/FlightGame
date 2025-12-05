@@ -18,3 +18,8 @@
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
 /build:effects.fx
+
+#begin Fonts/DefaultFont.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:Fonts/DefaultFont.spritefont

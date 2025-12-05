@@ -1,4 +1,4 @@
-﻿using FlightGame.Rendering.Core;
+using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Models;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -100,10 +100,12 @@ public class LandscapeChunk(
         _model = new ColoredTrianglesModel(device, triangles);
     }
 
-    public void Render(GraphicsDevice graphicsDevice, Effect effect)
+    public int TriangleCount => _model?.TriangleCount ?? 0;
+
+    public void Render(GraphicsDevice graphicsDevice, Effect effect, PerformanceCounter performanceCounter)
     {
         var model = _model ?? throw new InvalidOperationException("Model has not been built. Call BuildModel() first.");
 
-        model.Render(graphicsDevice, effect);
+        model.Render(graphicsDevice, effect, performanceCounter);
     }
 }

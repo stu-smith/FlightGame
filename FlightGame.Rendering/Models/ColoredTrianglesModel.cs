@@ -1,8 +1,6 @@
-﻿using Microsoft.Xna.Framework;
+using FlightGame.Rendering.Core;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace FlightGame.Rendering.Models;
 
@@ -41,11 +39,14 @@ public class ColoredTrianglesModel
         }
     }
 
+    public int TriangleCount { get; }
+
     public ColoredTrianglesModel(GraphicsDevice graphicsDevice, IReadOnlyList<Triangle> triangles)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(triangles);
 
+        TriangleCount = triangles.Count;
         _vertices = new VertexPositionColorNormal[triangles.Count * 3];
 
         var index = 0;
@@ -95,7 +96,7 @@ public class ColoredTrianglesModel
 
         // Populate index buffer (one triangle per three sequential vertices)
         _indices = new int[triangles.Count * 3];
-        
+
         for (var i = 0; i < triangles.Count; i++)
         {
             _indices[i * 3 + 0] = i * 3 + 0;
@@ -112,7 +113,7 @@ public class ColoredTrianglesModel
         _indexBuffer.SetData(_indices);
     }
 
-    public void Render(GraphicsDevice graphicsDevice, Effect effect)
+    public void Render(GraphicsDevice graphicsDevice, Effect effect, PerformanceCounter performanceCounter)
     {
         foreach (var pass in effect.CurrentTechnique.Passes)
         {
@@ -122,6 +123,8 @@ public class ColoredTrianglesModel
             graphicsDevice.SetVertexBuffer(_vertexBuffer);
 
             graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, _indices.Length / 3);
+
+            performanceCounter.AddTriangles(_indices.Length / 3);
         }
     }
 

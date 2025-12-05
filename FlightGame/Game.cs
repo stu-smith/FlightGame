@@ -39,6 +39,8 @@ public class Game : Microsoft.Xna.Framework.Game
         _graphics.PreferredBackBufferWidth = 1200;
         _graphics.PreferredBackBufferHeight = 700;
         _graphics.IsFullScreen = false;
+        _graphics.PreferMultiSampling = false;
+        _graphics.GraphicsProfile = GraphicsProfile.HiDef;
         _graphics.ApplyChanges();
 
         Window.Title = "FlightGame";
@@ -157,6 +159,15 @@ public class Game : Microsoft.Xna.Framework.Game
         }
 
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
+
+        // Enable z-buffering (depth testing)
+        var depthState = new DepthStencilState
+        {
+            DepthBufferEnable = true,
+            DepthBufferWriteEnable = true,
+            DepthBufferFunction = CompareFunction.LessEqual
+        };
+        _device.DepthStencilState = depthState;
 
         var rs = new RasterizerState
         {

@@ -2,7 +2,7 @@
 
 namespace FlightGame.Rendering.Core;
 
-public class Octree
+public class Octree<T> where T : IOctreeItem
 {
     private const int _maxItemsPerNode = 8;
     private const int _maxDepth = 8;
@@ -25,7 +25,7 @@ public class Octree
         _root = new OctreeNode(bounds, 0);
     }
 
-    public void Insert(IOctreeItem item)
+    public void Insert(T item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
@@ -33,7 +33,7 @@ public class Octree
         _root.Insert(item, boundingBox);
     }
 
-    public void Remove(IOctreeItem item)
+    public void Remove(T item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
@@ -41,23 +41,23 @@ public class Octree
         _root.Remove(item, boundingBox);
     }
 
-    public List<IOctreeItem> Query(AxisAlignedBoundingBox bounds)
+    public List<T> Query(AxisAlignedBoundingBox bounds)
     {
-        var results = new List<IOctreeItem>();
+        var results = new List<T>();
         _root.Query(bounds, results);
         return results;
     }
 
-    public List<IOctreeItem> Query(Vector3 point)
+    public List<T> Query(Vector3 point)
     {
-        var results = new List<IOctreeItem>();
+        var results = new List<T>();
         _root.Query(point, results);
         return results;
     }
 
-    public List<IOctreeItem> GetAllItems()
+    public List<T> GetAllItems()
     {
-        var results = new List<IOctreeItem>();
+        var results = new List<T>();
         _root.GetAllItems(results);
         return results;
     }
@@ -71,10 +71,10 @@ public class Octree
     {
         private readonly AxisAlignedBoundingBox _bounds = bounds;
         private readonly int _depth = depth;
-        private readonly List<IOctreeItem> _items = [];
+        private readonly List<T> _items = [];
         private OctreeNode[]? _children;
 
-        public void Insert(IOctreeItem item, AxisAlignedBoundingBox itemBounds)
+        public void Insert(T item, AxisAlignedBoundingBox itemBounds)
         {
             if (!_bounds.Intersects(itemBounds))
             {
@@ -99,7 +99,7 @@ public class Octree
             }
         }
 
-        public void Remove(IOctreeItem item, AxisAlignedBoundingBox itemBounds)
+        public void Remove(T item, AxisAlignedBoundingBox itemBounds)
         {
             if (!_bounds.Intersects(itemBounds))
             {
@@ -121,7 +121,7 @@ public class Octree
             }
         }
 
-        public void Query(AxisAlignedBoundingBox bounds, List<IOctreeItem> results)
+        public void Query(AxisAlignedBoundingBox bounds, List<T> results)
         {
             if (!_bounds.Intersects(bounds))
             {
@@ -148,7 +148,7 @@ public class Octree
             }
         }
 
-        public void Query(Vector3 point, List<IOctreeItem> results)
+        public void Query(Vector3 point, List<T> results)
         {
             if (!_bounds.Contains(point))
             {
@@ -175,7 +175,7 @@ public class Octree
             }
         }
 
-        public void GetAllItems(List<IOctreeItem> results)
+        public void GetAllItems(List<T> results)
         {
             if (_children == null)
             {
@@ -259,7 +259,7 @@ public class Octree
                 _depth + 1);
 
             // Redistribute existing items to children
-            var itemsToRedistribute = new List<IOctreeItem>(_items);
+            var itemsToRedistribute = new List<T>(_items);
             _items.Clear();
 
             foreach (var item in itemsToRedistribute)

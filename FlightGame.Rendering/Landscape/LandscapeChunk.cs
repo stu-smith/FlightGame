@@ -21,6 +21,7 @@ public class LandscapeChunk(
 {
     private const int _chunkSize = 100;
 
+    private GraphicsDevice? _device;
     private ColoredTrianglesModel? _model;
 
     public static IReadOnlyList<LandscapeChunk> CreateChunksFromLandscape(LandscapeModel landscape)
@@ -58,8 +59,10 @@ public class LandscapeChunk(
         return chunks;
     }
 
-    public void BuildModel(GraphicsDevice device)
+    public void SetDevice(GraphicsDevice device)
     {
+        _device = device;
+
         // Helper function to map data coordinates to world coordinates
         Vector3 GetWorldPosition(int dataX, int dataZ)
         {
@@ -141,11 +144,16 @@ public class LandscapeChunk(
 
     public int TriangleCount => _model?.TriangleCount ?? 0;
 
-    public void Render(GraphicsDevice graphicsDevice, Effect effect, PerformanceCounter performanceCounter)
+    public void Render(Effect effect, PerformanceCounter performanceCounter)
     {
+        if (_device == null)
+        {
+            throw new InvalidOperationException("Graphics device has not been set. Call SetDevice() first.");
+        }
+
         var model = _model ?? throw new InvalidOperationException("Model has not been built. Call BuildModel() first.");
 
-        model.Render(graphicsDevice, effect, performanceCounter);
+        model.Render(_device, effect, performanceCounter);
     }
 
     public AxisAlignedBoundingBox GetBoundingBox()

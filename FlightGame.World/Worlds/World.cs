@@ -6,12 +6,12 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace FlightGame.World.Worlds;
 
-public class World
+public class World : IRenderable
 {
     private const float _worldSize = 20_000;
 
     private GraphicsDevice? _device;
-    private IReadOnlyList<LandscapeChunk> _landscapeChunks = [];
+    private readonly Octree<IRenderable> _octree = new(_worldSize);
 
     public World()
     {
@@ -46,29 +46,45 @@ public class World
 
         landscapeModel.AutoAssignColors(colorStops);
 
-        _landscapeChunks = LandscapeChunk.CreateChunksFromLandscape(landscapeModel);
+        var landscapeChunks = LandscapeChunk.CreateChunksFromLandscape(landscapeModel);
+        
+        foreach (var chunk in landscapeChunks)
+        {
+            _octree.Insert(chunk);
+        }
     }
 
     public void SetDevice(GraphicsDevice device)
     {
         _device = device;
 
-        foreach (var chunk in _landscapeChunks)
+        var allChunks = _octree.GetAllItems();
+
+        foreach (var item in allChunks)
         {
-            chunk.BuildModel(device);
+            item.SetDevice(device);
         }
     }
 
-    public void Render(GraphicsDevice graphicsDevice, Effect effect, PerformanceCounter performanceCounter)
+    public void Render(Effect effect, PerformanceCounter performanceCounter)
     {
         if (_device == null)
         {
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        foreach (var chunk in _landscapeChunks)
+        var allChunks = _octree.GetAllItems();
+
+        foreach (var item in allChunks)
         {
-            chunk.Render(_device, effect, performanceCounter);
+            item.Render(effect, performanceCounter);
         }
+    }
+
+    public AxisAlignedBoundingBox GetBoundingBox()
+    {
+        return new AxisAlignedBoundingBox(
+            -_worldSize / 2, -_worldSize / 2, -_worldSize / 2,
+             _worldSize / 2,  _worldSize / 2,  _worldSize / 2);
     }
 }

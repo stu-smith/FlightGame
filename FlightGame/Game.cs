@@ -148,7 +148,7 @@ public class Game : Microsoft.Xna.Framework.Game
 
         _performanceCounter.BeginFrame();
 
-        _world.Render(_device, _effect, _performanceCounter);
+        _world.Render(_effect, _performanceCounter);
 
         _performanceCounter.EndFrame();
 

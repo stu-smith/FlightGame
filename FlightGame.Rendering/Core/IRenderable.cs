@@ -2,7 +2,9 @@
 
 namespace FlightGame.Rendering.Core;
 
-public interface IRenderable
+public interface IRenderable : IOctreeItem
 {
-    void Render(GraphicsDevice graphicsDevice, Effect effect, PerformanceCounter performanceCounter);
+    void SetDevice(GraphicsDevice device);
+
+    void Render(Effect effect, PerformanceCounter performanceCounter);
 }

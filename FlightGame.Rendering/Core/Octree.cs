@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System.Collections.Generic;
+using Microsoft.Xna.Framework;
 
 namespace FlightGame.Rendering.Core;
 
@@ -43,23 +44,23 @@ public class Octree<T> where T : IOctreeItem
 
     public List<T> Query(AxisAlignedBoundingBox bounds)
     {
-        var results = new List<T>();
+        var results = new HashSet<T>();
         _root.Query(bounds, results);
-        return results;
+        return [.. results];
     }
 
     public List<T> Query(Vector3 point)
     {
-        var results = new List<T>();
+        var results = new HashSet<T>();
         _root.Query(point, results);
-        return results;
+        return [.. results];
     }
 
     public List<T> GetAllItems()
     {
-        var results = new List<T>();
+        var results = new HashSet<T>();
         _root.GetAllItems(results);
-        return results;
+        return [.. results];
     }
 
     public void Clear()
@@ -121,7 +122,7 @@ public class Octree<T> where T : IOctreeItem
             }
         }
 
-        public void Query(AxisAlignedBoundingBox bounds, List<T> results)
+        public void Query(AxisAlignedBoundingBox bounds, HashSet<T> results)
         {
             if (!_bounds.Intersects(bounds))
             {
@@ -148,7 +149,7 @@ public class Octree<T> where T : IOctreeItem
             }
         }
 
-        public void Query(Vector3 point, List<T> results)
+        public void Query(Vector3 point, HashSet<T> results)
         {
             if (!_bounds.Contains(point))
             {
@@ -175,11 +176,14 @@ public class Octree<T> where T : IOctreeItem
             }
         }
 
-        public void GetAllItems(List<T> results)
+        public void GetAllItems(HashSet<T> results)
         {
             if (_children == null)
             {
-                results.AddRange(_items);
+                foreach (var item in _items)
+                {
+                    results.Add(item);
+                }
             }
             else
             {

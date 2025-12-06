@@ -17,7 +17,7 @@ public class LandscapeChunk(
     float worldMaxX,
     float worldMinZ,
     float worldMaxZ
-)
+) : IOctreeItem, IRenderable
 {
     private const int _chunkSize = 100;
 
@@ -36,7 +36,7 @@ public class LandscapeChunk(
             {
                 var chunkMaxY = Math.Min(chunkMinY + _chunkSize, points.MaxY);
 
-                // Skip empty chunks – this keeps the list smaller when most of the map is empty.
+                // Skip empty chunks ï¿½ this keeps the list smaller when most of the map is empty.
                 if (!landscape.HasData(chunkMinX, chunkMaxX, chunkMinY, chunkMaxY))
                 {
                     continue;
@@ -146,5 +146,43 @@ public class LandscapeChunk(
         var model = _model ?? throw new InvalidOperationException("Model has not been built. Call BuildModel() first.");
 
         model.Render(graphicsDevice, effect, performanceCounter);
+    }
+
+    public AxisAlignedBoundingBox GetBoundingBox()
+    {
+        var minHeight = float.MaxValue;
+        var maxHeight = float.MinValue;
+
+        // Find min and max height in the chunk
+        for (var z = dataMinZ; z <= dataMaxZ; z++)
+        {
+            for (var x = dataMinX; x <= dataMaxX; x++)
+            {
+                var point = landscapeData[x, z];
+                if (point != null)
+                {
+                    if (point.Height < minHeight)
+                    {
+                        minHeight = point.Height;
+                    }
+                    if (point.Height > maxHeight)
+                    {
+                        maxHeight = point.Height;
+                    }
+                }
+            }
+        }
+
+        // If no height data found, default to 0
+        if (minHeight == float.MaxValue)
+        {
+            minHeight = 0f;
+            maxHeight = 0f;
+        }
+
+        return new AxisAlignedBoundingBox(
+            worldMinX, minHeight, worldMinZ,
+            worldMaxX, maxHeight, worldMaxZ
+        );
     }
 }

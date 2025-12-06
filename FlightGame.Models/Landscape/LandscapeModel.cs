@@ -6,8 +6,11 @@ namespace FlightGame.Models.Landscape;
 
 public class LandscapeModel
 {
-    private const int _mapSize = 5_000;
     private const float _worldScaling = 5f;
+
+    private readonly int _mapSize;
+
+    private readonly Sparse2dArray<LandscapePoint> _points;
 
     public int MinWorldX => -_mapSize / 2 * (int)_worldScaling;
     public int MaxWorldX => _mapSize / 2 * (int)_worldScaling;
@@ -19,7 +22,11 @@ public class LandscapeModel
     public int MinLandscapeY => -_mapSize / 2;
     public int MaxLandscapeY => _mapSize / 2;
 
-    private readonly Sparse2dArray<LandscapePoint> _points = new(-_mapSize / 2, _mapSize / 2, -_mapSize / 2, _mapSize / 2);
+    public LandscapeModel(float size)
+    {
+        _mapSize = (int) (size / _worldScaling);
+        _points = new(-_mapSize / 2, _mapSize / 2, -_mapSize / 2, _mapSize / 2);
+    }
 
     public float WorldScaling => _worldScaling;
 

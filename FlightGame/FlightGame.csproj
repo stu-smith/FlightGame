@@ -15,5 +15,6 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\FlightGame.Content\FlightGame.Content.csproj" />
 	  <ProjectReference Include="..\FlightGame.Rendering\FlightGame.Rendering.csproj" />
+	  <ProjectReference Include="..\FlightGame.World\FlightGame.World.csproj" />
 	</ItemGroup>
 </Project>

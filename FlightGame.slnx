@@ -19,6 +19,9 @@
   <Project Path="FlightGame.Shared/FlightGame.Shared.csproj">
     <Platform Project="x64" />
   </Project>
+  <Project Path="FlightGame.World/FlightGame.World.csproj">
+    <Platform Project="x64" />
+  </Project>
   <Project Path="FlightGame/FlightGame.csproj">
     <Platform Project="x64" />
   </Project>

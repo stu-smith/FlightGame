@@ -1,10 +1,10 @@
-﻿namespace FlightGame.Rendering.Core;
+﻿namespace FlightGame.Shared.DataStructures;
 
 /// <summary>
 /// Sparse 2D array backed by a contiguous 1D array.
 /// Logical coordinates are constrained to the inclusive bounds passed to the constructor.
 /// </summary>
-public class Sparse2dArray<T>(int minX, int maxX, int minY, int maxY)
+public class Sparse2dArray<T>(int minX, int maxX, int minY, int maxY) : IReadOnlySparse2dArray<T>
 {
     private readonly T[] _data = new T[(maxX - minX + 1) * (maxY - minY + 1)];
 

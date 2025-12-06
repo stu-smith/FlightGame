@@ -10,6 +10,7 @@
 		<PackageReference Include="MonoGame.Framework.WindowsDX" />
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\FlightGame.Models\FlightGame.Models.csproj" />
+	  <ProjectReference Include="..\FlightGame.Shared\FlightGame.Shared.csproj" />
 	</ItemGroup>
+
 </Project>

@@ -1,5 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
 
-namespace FlightGame.Rendering.Landscape;
+namespace FlightGame.Models.Landscape;
 
 public record LandscapePoint(float Height, Color Color);

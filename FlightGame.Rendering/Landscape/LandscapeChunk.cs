@@ -1,12 +1,14 @@
+using FlightGame.Models.Landscape;
 using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Models;
+using FlightGame.Shared.DataStructures;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace FlightGame.Rendering.Landscape;
 
 public class LandscapeChunk(
-    Sparse2dArray<LandscapePoint> landscapeData,
+    IReadOnlySparse2dArray<LandscapePoint> landscapeData,
     int dataMinX,
     int dataMaxX,
     int dataMinZ,
@@ -17,7 +19,44 @@ public class LandscapeChunk(
     float worldMaxZ
 )
 {
+    private const int _chunkSize = 100;
+
     private ColoredTrianglesModel? _model;
+
+    public static IReadOnlyList<LandscapeChunk> CreateChunksFromLandscape(LandscapeModel landscape)
+    {
+        var chunks = new List<LandscapeChunk>();
+        var points = landscape.Points;
+
+        for (var chunkMinX = points.MinX; chunkMinX < points.MaxX; chunkMinX += _chunkSize)
+        {
+            var chunkMaxX = Math.Min(chunkMinX + _chunkSize, points.MaxX);
+
+            for (var chunkMinY = points.MinY; chunkMinY < points.MaxY; chunkMinY += _chunkSize)
+            {
+                var chunkMaxY = Math.Min(chunkMinY + _chunkSize, points.MaxY);
+
+                // Skip empty chunks – this keeps the list smaller when most of the map is empty.
+                if (!landscape.HasData(chunkMinX, chunkMaxX, chunkMinY, chunkMaxY))
+                {
+                    continue;
+                }
+
+                chunks.Add(new LandscapeChunk(
+                    points,
+                    chunkMinX,
+                    chunkMaxX,
+                    chunkMinY,
+                    chunkMaxY,
+                    chunkMinX * landscape.WorldScaling,
+                    chunkMaxX * landscape.WorldScaling,
+                    chunkMinY * landscape.WorldScaling,
+                    chunkMaxY * landscape.WorldScaling));
+            }
+        }
+
+        return chunks;
+    }
 
     public void BuildModel(GraphicsDevice device)
     {

@@ -1,13 +1,12 @@
-using FlightGame.Rendering.Core;
+using FlightGame.Shared.DataStructures;
 using Microsoft.Xna.Framework;
 using System.Reflection;
 
-namespace FlightGame.Rendering.Landscape;
+namespace FlightGame.Models.Landscape;
 
 public class LandscapeModel
 {
     private const int _mapSize = 5_000;
-    private const int _chunkSize = 100;
     private const float _worldScaling = 5f;
 
     public int MinWorldX => -_mapSize / 2 * (int)_worldScaling;
@@ -21,6 +20,10 @@ public class LandscapeModel
     public int MaxLandscapeY => _mapSize / 2;
 
     private readonly Sparse2dArray<LandscapePoint> _points = new(-_mapSize / 2, _mapSize / 2, -_mapSize / 2, _mapSize / 2);
+
+    public float WorldScaling => _worldScaling;
+
+    public IReadOnlySparse2dArray<LandscapePoint> Points => _points;
 
     public void AddHeightMap(
         string resourceName,
@@ -157,40 +160,6 @@ public class LandscapeModel
         }
 
         return false;
-    }
-
-    public IReadOnlyList<LandscapeChunk> CreateChunks()
-    {
-        var chunks = new List<LandscapeChunk>();
-
-        for (var chunkMinX = _points.MinX; chunkMinX < _points.MaxX; chunkMinX += _chunkSize)
-        {
-            var chunkMaxX = Math.Min(chunkMinX + _chunkSize, _points.MaxX);
-
-            for (var chunkMinY = _points.MinY; chunkMinY < _points.MaxY; chunkMinY += _chunkSize)
-            {
-                var chunkMaxY = Math.Min(chunkMinY + _chunkSize, _points.MaxY);
-
-                // Skip empty chunks – this keeps the list smaller when most of the map is empty.
-                if (!HasData(chunkMinX, chunkMaxX, chunkMinY, chunkMaxY))
-                {
-                    continue;
-                }
-
-                chunks.Add(new LandscapeChunk(
-                    _points,
-                    chunkMinX,
-                    chunkMaxX,
-                    chunkMinY,
-                    chunkMaxY,
-                    chunkMinX * _worldScaling,
-                    chunkMaxX * _worldScaling,
-                    chunkMinY * _worldScaling,
-                    chunkMaxY * _worldScaling));
-            }
-        }
-
-        return chunks;
     }
 
     private static System.Drawing.Bitmap LoadHeightMapBitmap(Assembly? assembly, string resourceName)

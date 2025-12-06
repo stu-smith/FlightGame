@@ -11,6 +11,7 @@ using FillMode = Microsoft.Xna.Framework.Graphics.FillMode;
 using RasterizerState = Microsoft.Xna.Framework.Graphics.RasterizerState;
 using SpriteFont = Microsoft.Xna.Framework.Graphics.SpriteFont;
 using FlightGame.Rendering.Core;
+using FlightGame.Models.Landscape;
 
 namespace FlightGame;
 
@@ -86,7 +87,7 @@ public class Game : Microsoft.Xna.Framework.Game
 
         landscapeModel.AutoAssignColors(colorStops);
 
-        _landscapeChunks = landscapeModel.CreateChunks();
+        _landscapeChunks = LandscapeChunk.CreateChunksFromLandscape(landscapeModel);
 
         foreach (var chunk in _landscapeChunks)
         {

@@ -135,7 +135,7 @@ public class ColoredTrianglesModel : IRenderable
         throw new NotImplementedException();
     }
 
-    public AxisAlignedBoundingBox GetBoundingBox()
+    public BoundingBox GetBoundingBox()
     {
         throw new NotImplementedException();
     }

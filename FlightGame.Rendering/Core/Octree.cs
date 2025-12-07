@@ -19,9 +19,9 @@ public class Octree<T> where T : IOctreeItem
         }
 
         var halfSize = size * 0.5f;
-        var bounds = new AxisAlignedBoundingBox(
-            -halfSize, -halfSize, -halfSize,
-            halfSize, halfSize, halfSize
+        var bounds = new BoundingBox(
+            new Vector3(-halfSize, -halfSize, -halfSize),
+            new Vector3(halfSize, halfSize, halfSize)
         );
         _root = new OctreeNode(bounds, 0);
     }
@@ -42,7 +42,7 @@ public class Octree<T> where T : IOctreeItem
         _root.Remove(item, boundingBox);
     }
 
-    public List<T> Query(AxisAlignedBoundingBox bounds)
+    public List<T> Query(BoundingBox bounds)
     {
         var results = new HashSet<T>();
         _root.Query(bounds, results);
@@ -56,7 +56,7 @@ public class Octree<T> where T : IOctreeItem
         return [.. results];
     }
 
-    public List<T> Query(Frustum frustum)
+    public List<T> Query(BoundingFrustum frustum)
     {
         var results = new HashSet<T>();
         _root.Query(frustum, results);
@@ -75,14 +75,14 @@ public class Octree<T> where T : IOctreeItem
         _root.Clear();
     }
 
-    private class OctreeNode(AxisAlignedBoundingBox bounds, int depth)
+    private class OctreeNode(BoundingBox bounds, int depth)
     {
-        private readonly AxisAlignedBoundingBox _bounds = bounds;
+        private readonly BoundingBox _bounds = bounds;
         private readonly int _depth = depth;
         private readonly List<T> _items = [];
         private OctreeNode[]? _children;
 
-        public void Insert(T item, AxisAlignedBoundingBox itemBounds)
+        public void Insert(T item, BoundingBox itemBounds)
         {
             if (!_bounds.Intersects(itemBounds))
             {
@@ -91,8 +91,9 @@ public class Octree<T> where T : IOctreeItem
 
             if (_children == null)
             {
+                var size = _bounds.Max - _bounds.Min;
                 if (_items.Count < _maxItemsPerNode || _depth >= _maxDepth ||
-                    _bounds.Width <= _minNodeSize || _bounds.Height <= _minNodeSize || _bounds.Depth <= _minNodeSize)
+                    size.X <= _minNodeSize || size.Y <= _minNodeSize || size.Z <= _minNodeSize)
                 {
                     _items.Add(item);
                     return;
@@ -107,7 +108,7 @@ public class Octree<T> where T : IOctreeItem
             }
         }
 
-        public void Remove(T item, AxisAlignedBoundingBox itemBounds)
+        public void Remove(T item, BoundingBox itemBounds)
         {
             if (!_bounds.Intersects(itemBounds))
             {
@@ -129,7 +130,7 @@ public class Octree<T> where T : IOctreeItem
             }
         }
 
-        public void Query(AxisAlignedBoundingBox bounds, HashSet<T> results)
+        public void Query(BoundingBox bounds, HashSet<T> results)
         {
             if (!_bounds.Intersects(bounds))
             {
@@ -158,7 +159,7 @@ public class Octree<T> where T : IOctreeItem
 
         public void Query(Vector3 point, HashSet<T> results)
         {
-            if (!_bounds.Contains(point))
+            if (_bounds.Contains(point) == ContainmentType.Disjoint)
             {
                 return;
             }
@@ -168,7 +169,8 @@ public class Octree<T> where T : IOctreeItem
                 foreach (var item in _items)
                 {
                     var itemBounds = item.GetBoundingBox();
-                    if (itemBounds.Contains(point))
+
+                    if (itemBounds.Contains(point) == ContainmentType.Disjoint)
                     {
                         results.Add(item);
                     }
@@ -183,7 +185,51 @@ public class Octree<T> where T : IOctreeItem
             }
         }
 
-        public void Query(Frustum frustum, HashSet<T> results)
+        private void Contains(ref BoundingFrustum boundingFrustum, ref BoundingBox box, out ContainmentType result)
+        {
+            var intersects = false;
+            Plane[] planes = [
+                boundingFrustum.Near,
+                    //boundingFrustum.Far,
+                    boundingFrustum.Left,
+                    boundingFrustum.Right,
+                    boundingFrustum.Top,
+                    boundingFrustum.Bottom
+            ];
+
+            for (var i = 0; i < planes.Length; ++i)
+            {
+                var planeIntersectionType = default(PlaneIntersectionType);
+
+                box.Intersects(ref planes[i], out planeIntersectionType);
+                switch (planeIntersectionType)
+                {
+                    case PlaneIntersectionType.Front:
+                        result = ContainmentType.Disjoint;
+                        return;
+                    case PlaneIntersectionType.Intersecting:
+                        intersects = true;
+                        break;
+                }
+            }
+            result = intersects ? ContainmentType.Intersects : ContainmentType.Contains;
+        }
+
+        bool Intersects(ref BoundingFrustum boundingFrustum, BoundingBox box)
+        {
+            var result = false;
+            this.Intersects(ref boundingFrustum, ref box, out result);
+            return result;
+        }
+
+        void Intersects(ref BoundingFrustum boundingFrustum, ref BoundingBox box, out bool result)
+        {
+            var containment = default(ContainmentType);
+            Contains(ref boundingFrustum, ref box, out containment);
+            result = containment != ContainmentType.Disjoint;
+        }
+
+        public void Query(BoundingFrustum frustum, HashSet<T> results)
         {
             // Check if the node's bounds intersect with the frustum
             if (!frustum.Intersects(_bounds))
@@ -197,10 +243,13 @@ public class Octree<T> where T : IOctreeItem
                 foreach (var item in _items)
                 {
                     var itemBounds = item.GetBoundingBox();
-                    if (frustum.Intersects(itemBounds))
+
+                    if (!Intersects(ref frustum, itemBounds))
                     {
-                        results.Add(item);
+                        continue;
                     }
+
+                    results.Add(item);
                 }
             }
             else
@@ -239,64 +288,64 @@ public class Octree<T> where T : IOctreeItem
 
         private void Subdivide()
         {
-            var center = _bounds.Center;
+            var center = _bounds.Center();
 
             _children = new OctreeNode[8];
 
             // Bottom-left-front
             _children[0] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    _bounds.Min.X, _bounds.Min.Y, _bounds.Min.Z,
-                    center.X, center.Y, center.Z),
+                new BoundingBox(
+                    _bounds.Min,
+                    center),
                 _depth + 1);
 
             // Bottom-right-front
             _children[1] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    center.X, _bounds.Min.Y, _bounds.Min.Z,
-                    _bounds.Max.X, center.Y, center.Z),
+                new BoundingBox(
+                    new Vector3(center.X, _bounds.Min.Y, _bounds.Min.Z),
+                    new Vector3(_bounds.Max.X, center.Y, center.Z)),
                 _depth + 1);
 
             // Bottom-left-back
             _children[2] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    _bounds.Min.X, _bounds.Min.Y, center.Z,
-                    center.X, center.Y, _bounds.Max.Z),
+                new BoundingBox(
+                    new Vector3(_bounds.Min.X, _bounds.Min.Y, center.Z),
+                    new Vector3(center.X, center.Y, _bounds.Max.Z)),
                 _depth + 1);
 
             // Bottom-right-back
             _children[3] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    center.X, _bounds.Min.Y, center.Z,
-                    _bounds.Max.X, center.Y, _bounds.Max.Z),
+                new BoundingBox(
+                    new Vector3(center.X, _bounds.Min.Y, center.Z),
+                    new Vector3(_bounds.Max.X, center.Y, _bounds.Max.Z)),
                 _depth + 1);
 
             // Top-left-front
             _children[4] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    _bounds.Min.X, center.Y, _bounds.Min.Z,
-                    center.X, _bounds.Max.Y, center.Z),
+                new BoundingBox(
+                    new Vector3(_bounds.Min.X, center.Y, _bounds.Min.Z),
+                    new Vector3(center.X, _bounds.Max.Y, center.Z)),
                 _depth + 1);
 
             // Top-right-front
             _children[5] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    center.X, center.Y, _bounds.Min.Z,
-                    _bounds.Max.X, _bounds.Max.Y, center.Z),
+                new BoundingBox(
+                    new Vector3(center.X, center.Y, _bounds.Min.Z),
+                    new Vector3(_bounds.Max.X, _bounds.Max.Y, center.Z)),
                 _depth + 1);
 
             // Top-left-back
             _children[6] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    _bounds.Min.X, center.Y, center.Z,
-                    center.X, _bounds.Max.Y, _bounds.Max.Z),
+                new BoundingBox(
+                    new Vector3(_bounds.Min.X, center.Y, center.Z),
+                    new Vector3(center.X, _bounds.Max.Y, _bounds.Max.Z)),
                 _depth + 1);
 
             // Top-right-back
             _children[7] = new OctreeNode(
-                new AxisAlignedBoundingBox(
-                    center.X, center.Y, center.Z,
-                    _bounds.Max.X, _bounds.Max.Y, _bounds.Max.Z),
+                new BoundingBox(
+                    center,
+                    _bounds.Max),
                 _depth + 1);
 
             // Redistribute existing items to children

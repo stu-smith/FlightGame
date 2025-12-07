@@ -23,7 +23,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
     private GraphicsDevice? _device;
     private ColoredTrianglesModel? _model;
-    private readonly AxisAlignedBoundingBox _boundingBox;
+    private readonly BoundingBox _boundingBox;
 
     public LandscapeChunk(
         IReadOnlySparse2dArray<LandscapePoint> landscapeData,
@@ -51,7 +51,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
     }
 
     // Compute bounding box during construction
-    private AxisAlignedBoundingBox ComputeBoundingBox()
+    private BoundingBox ComputeBoundingBox()
     {
         var minHeight = float.MaxValue;
         var maxHeight = float.MinValue;
@@ -83,9 +83,9 @@ public class LandscapeChunk : IOctreeItem, IRenderable
             maxHeight = 0f;
         }
 
-        return new AxisAlignedBoundingBox(
-            _worldMinX, minHeight, _worldMinZ,
-            _worldMaxX, maxHeight, _worldMaxZ
+        return new BoundingBox(
+            new Vector3(_worldMinX, minHeight, _worldMinZ),
+            new Vector3(_worldMaxX, maxHeight, _worldMaxZ)
         );
     }
 
@@ -221,7 +221,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         model.Render(effect, renderContext);
     }
 
-    public AxisAlignedBoundingBox GetBoundingBox()
+    public BoundingBox GetBoundingBox()
     {
         return _boundingBox;
     }

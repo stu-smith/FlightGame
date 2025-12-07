@@ -1,5 +1,4 @@
-﻿using FlightGame.Rendering.Core;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 
 namespace FlightGame.Rendering.Cameras;
 
@@ -19,7 +18,7 @@ public interface ICamera
 
 public static class CameraExtensions
 {
-    public static Frustum GetFrustum(
+    public static BoundingFrustum GetFrustum(
         this ICamera camera,
         float nearDistance,
         float farDistance,
@@ -38,6 +37,6 @@ public static class CameraExtensions
 
         var viewProjection = viewMatrix * projectionMatrix;
 
-        return Frustum.CreateFromMatrix(viewProjection);
+        return new BoundingFrustum(viewProjection);
     }
 }

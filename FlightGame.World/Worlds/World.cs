@@ -79,7 +79,7 @@ public class World : IRenderable
             throw new InvalidOperationException("View frustum is not set in render context.");
         }
 
-        var allChunks = _octree.Query(renderContext.ViewFrustum.Value);
+        var allChunks = _octree.Query(renderContext.ViewFrustum);
 
         foreach (var item in allChunks)
         {
@@ -87,10 +87,11 @@ public class World : IRenderable
         }
     }
 
-    public AxisAlignedBoundingBox GetBoundingBox()
+    public BoundingBox GetBoundingBox()
     {
-        return new AxisAlignedBoundingBox(
-            -_worldSize / 2, -_worldSize / 2, -_worldSize / 2,
-             _worldSize / 2,  _worldSize / 2,  _worldSize / 2);
+        var halfSize = _worldSize / 2;
+        return new BoundingBox(
+            new Vector3(-halfSize, -halfSize, -halfSize),
+            new Vector3(halfSize, halfSize, halfSize));
     }
 }

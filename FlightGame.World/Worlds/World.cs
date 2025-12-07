@@ -1,4 +1,5 @@
 ﻿using FlightGame.Models.Landscape;
+using FlightGame.Rendering;
 using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Landscape;
 using Microsoft.Xna.Framework;
@@ -66,7 +67,7 @@ public class World : IRenderable
         }
     }
 
-    public void Render(Effect effect, PerformanceCounter performanceCounter)
+    public void Render(Effect effect, RenderContext renderContext)
     {
         if (_device == null)
         {
@@ -77,7 +78,7 @@ public class World : IRenderable
 
         foreach (var item in allChunks)
         {
-            item.Render(effect, performanceCounter);
+            item.Render(effect, renderContext);
         }
     }
 

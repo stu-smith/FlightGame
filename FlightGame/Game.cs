@@ -1,3 +1,4 @@
+using FlightGame.Rendering;
 using FlightGame.Rendering.Cameras;
 using FlightGame.Rendering.Core;
 using Microsoft.Xna.Framework;
@@ -14,20 +15,25 @@ namespace FlightGame;
 
 public class Game : Microsoft.Xna.Framework.Game
 {
+    private const float _fieldOfView = MathHelper.PiOver4;
+    private const float _nearPlane = 1.0f;
+    private const float _farPlane = 20000.0f;
+
     private readonly GraphicsDeviceManager _graphics;
     private GraphicsDevice? _device;
     private Effect? _effect;
-    private Matrix _projectionMatrix;
     private float _angle = 0f;
     private readonly ICamera _camera = new DebugCamera();
     private readonly PerformanceCounter _performanceCounter = new();
     private SpriteFont? _font;
     private SpriteBatch? _spriteBatch;
     private World.Worlds.World _world = new();
+    private readonly RenderContext _renderContext;
 
     public Game()
     {
         _graphics = new GraphicsDeviceManager(this);
+        _renderContext = new(_performanceCounter);
 
         IsMouseVisible = true;
     }
@@ -52,12 +58,6 @@ public class Game : Microsoft.Xna.Framework.Game
         {
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
-
-        _projectionMatrix = Matrix.CreatePerspectiveFieldOfView(
-            MathHelper.PiOver4,
-            _device.Viewport.AspectRatio,
-            1.0f,
-            20000.0f);
     }
 
     protected override void LoadContent()
@@ -131,13 +131,18 @@ public class Game : Microsoft.Xna.Framework.Game
 
         // TODO: Add your drawing code here
         var viewMatrix = _camera.CreateViewMatrix();
+        var projectionMatrix = _camera.CreateProjectionMatrix(
+            _nearPlane,
+            _farPlane,
+            _fieldOfView,
+            _device.Viewport.AspectRatio);
 
         // Rotate the world around the center of the terrain instead of the global origin
         var worldMatrix = Matrix.CreateRotationY(_angle);
 
         _effect.CurrentTechnique = _effect.Techniques["Colored"];
         _effect.Parameters["xView"].SetValue(viewMatrix);
-        _effect.Parameters["xProjection"].SetValue(_projectionMatrix);
+        _effect.Parameters["xProjection"].SetValue(projectionMatrix);
         _effect.Parameters["xWorld"].SetValue(worldMatrix);
 
         var lightDirection = new Vector3(1.0f, -1.0f, -1.0f);
@@ -148,7 +153,7 @@ public class Game : Microsoft.Xna.Framework.Game
 
         _performanceCounter.BeginFrame();
 
-        _world.Render(_effect, _performanceCounter);
+        _world.Render(_effect, _renderContext);
 
         _performanceCounter.EndFrame();
 

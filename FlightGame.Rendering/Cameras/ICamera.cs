@@ -9,5 +9,35 @@ public interface ICamera
 
     Matrix CreateViewMatrix();
 
-    Frustum GetFrustum(float nearDistance, float farDistance, float fieldOfView, float aspectRatio);
+    Matrix CreateProjectionMatrix(
+        float nearDistance,
+        float farDistance,
+        float fieldOfView,
+        float aspectRatio
+    );
+}
+
+public static class CameraExtensions
+{
+    public static Frustum GetFrustum(
+        this ICamera camera,
+        float nearDistance,
+        float farDistance,
+        float fieldOfView,
+        float aspectRatio
+    )
+    {
+        var viewMatrix = camera.CreateViewMatrix();
+
+        var projectionMatrix = camera.CreateProjectionMatrix(
+            fieldOfView,
+            aspectRatio,
+            nearDistance,
+            farDistance
+        );
+
+        var viewProjection = viewMatrix * projectionMatrix;
+
+        return Frustum.CreateFromMatrix(viewProjection);
+    }
 }

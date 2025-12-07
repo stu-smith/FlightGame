@@ -4,12 +4,12 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace FlightGame.Rendering.Models;
 
-public class ColoredTrianglesModel
+public class ColoredTrianglesModel : IRenderable
 {
     private readonly VertexPositionColorNormal[] _vertices = [];
     private readonly int[] _indices = [];
-    private VertexBuffer _vertexBuffer;
-    private IndexBuffer _indexBuffer;
+    private readonly VertexBuffer _vertexBuffer;
+    private readonly IndexBuffer _indexBuffer;
 
     public record class Triangle
     {
@@ -113,8 +113,10 @@ public class ColoredTrianglesModel
         _indexBuffer.SetData(_indices);
     }
 
-    public void Render(GraphicsDevice graphicsDevice, Effect effect, PerformanceCounter performanceCounter)
+    public void Render(Effect effect, RenderContext renderContext)
     {
+        var graphicsDevice = _vertexBuffer.GraphicsDevice;
+
         foreach (var pass in effect.CurrentTechnique.Passes)
         {
             pass.Apply();
@@ -124,8 +126,18 @@ public class ColoredTrianglesModel
 
             graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, _indices.Length / 3);
 
-            performanceCounter.AddTriangles(_indices.Length / 3);
+            renderContext.PerformanceCounter.AddTriangles(_indices.Length / 3);
         }
+    }
+
+    public void SetDevice(GraphicsDevice device)
+    {
+        throw new NotImplementedException();
+    }
+
+    public AxisAlignedBoundingBox GetBoundingBox()
+    {
+        throw new NotImplementedException();
     }
 
     private struct VertexPositionColorNormal

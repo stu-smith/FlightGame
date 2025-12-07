@@ -209,7 +209,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
     public int TriangleCount => _model?.TriangleCount ?? 0;
 
-    public void Render(Effect effect, PerformanceCounter performanceCounter)
+    public void Render(Effect effect, RenderContext renderContext)
     {
         if (_device == null)
         {
@@ -218,7 +218,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
         var model = _model ?? throw new InvalidOperationException("Model has not been built. Call BuildModel() first.");
 
-        model.Render(_device, effect, performanceCounter);
+        model.Render(effect, renderContext);
     }
 
     public AxisAlignedBoundingBox GetBoundingBox()

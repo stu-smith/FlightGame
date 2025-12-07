@@ -1,4 +1,5 @@
 ﻿using FlightGame.Models.Landscape;
+using FlightGame.Models.ProceduralGeneration;
 using FlightGame.Rendering;
 using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Landscape;
@@ -20,7 +21,17 @@ public class World : IRenderable
 
         var landscapeModel = new LandscapeModel(_worldSize);
 
-        landscapeModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 100);
+        var proceduralIsland = new ArchipelagoGenerator()
+            .GenerateIsland(new ArchipelagoGenerator.GenerationParameters
+            {
+                IslandRadius = 2f,
+                NoiseScale = 0.005f,
+                MaxHeight = 1000f
+            });
+
+        landscapeModel.AddLandscapeData(proceduralIsland, 0, 0);
+
+        //landscapeModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 100);
 
         for (var i = 0; i < 30; i++)
         {

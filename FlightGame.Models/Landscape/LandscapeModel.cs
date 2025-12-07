@@ -84,6 +84,54 @@ public class LandscapeModel
         }
     }
 
+    public void AddLandscapeData(
+        IReadOnlySparse2dArray<LandscapePoint> sourceData,
+        int centerX,
+        int centerY)
+    {
+        ArgumentNullException.ThrowIfNull(sourceData);
+
+        // Calculate offset from center
+        var sourceCenterX = (sourceData.MinX + sourceData.MaxX) / 2;
+        var sourceCenterY = (sourceData.MinY + sourceData.MaxY) / 2;
+        var offsetX = centerX - sourceCenterX;
+        var offsetY = centerY - sourceCenterY;
+
+        for (var x = sourceData.MinX; x <= sourceData.MaxX; x++)
+        {
+            for (var y = sourceData.MinY; y <= sourceData.MaxY; y++)
+            {
+                var sourcePoint = sourceData[x, y];
+                
+                // Skip null points in the source
+                if (sourcePoint is null)
+                {
+                    continue;
+                }
+
+                var targetX = x + offsetX;
+                var targetY = y + offsetY;
+
+                if (!_points.IsInBounds(targetX, targetY))
+                {
+                    continue;
+                }
+
+                var currentPoint = _points[targetX, targetY];
+                
+                // Add heights cumulatively (like AddHeightMap does)
+                var cumulativeHeight = (currentPoint?.Height ?? 0f) + sourcePoint.Height;
+                
+                // Preserve color from source if it's not black, otherwise keep existing color or use black
+                var color = sourcePoint.Color != Color.Black 
+                    ? sourcePoint.Color 
+                    : (currentPoint?.Color ?? Color.Black);
+
+                _points[targetX, targetY] = new LandscapePoint(cumulativeHeight, color);
+            }
+        }
+    }
+
     public void AutoAssignColors(IReadOnlyCollection<(float Height, Color Color)> colorStops)
     {
         ArgumentNullException.ThrowIfNull(colorStops);

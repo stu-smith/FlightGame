@@ -9,7 +9,7 @@ public class DebugCamera : ICamera
     private float _yaw;
     private float _pitch = -0.5f;
 
-    private const float _moveSpeed = 50f;   // units per second
+    private const float _moveSpeed = 200f;   // units per second
     private const float _turnSpeed = 2f;    // radians per second
 
     public void Update(GameTime gameTime)

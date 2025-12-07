@@ -7,22 +7,87 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace FlightGame.Rendering.Landscape;
 
-public class LandscapeChunk(
-    IReadOnlySparse2dArray<LandscapePoint> landscapeData,
-    int dataMinX,
-    int dataMaxX,
-    int dataMinZ,
-    int dataMaxZ,
-    float worldMinX,
-    float worldMaxX,
-    float worldMinZ,
-    float worldMaxZ
-) : IOctreeItem, IRenderable
+public class LandscapeChunk : IOctreeItem, IRenderable
 {
     private const int _chunkSize = 100;
 
+    private readonly IReadOnlySparse2dArray<LandscapePoint> _landscapeData;
+    private readonly int _dataMinX;
+    private readonly int _dataMaxX;
+    private readonly int _dataMinZ;
+    private readonly int _dataMaxZ;
+    private readonly float _worldMinX;
+    private readonly float _worldMaxX;
+    private readonly float _worldMinZ;
+    private readonly float _worldMaxZ;
+
     private GraphicsDevice? _device;
     private ColoredTrianglesModel? _model;
+    private readonly AxisAlignedBoundingBox _boundingBox;
+
+    public LandscapeChunk(
+        IReadOnlySparse2dArray<LandscapePoint> landscapeData,
+        int dataMinX,
+        int dataMaxX,
+        int dataMinZ,
+        int dataMaxZ,
+        float worldMinX,
+        float worldMaxX,
+        float worldMinZ,
+        float worldMaxZ)
+    {
+        _landscapeData = landscapeData;
+        _dataMinX = dataMinX;
+        _dataMaxX = dataMaxX;
+        _dataMinZ = dataMinZ;
+        _dataMaxZ = dataMaxZ;
+        _worldMinX = worldMinX;
+        _worldMaxX = worldMaxX;
+        _worldMinZ = worldMinZ;
+        _worldMaxZ = worldMaxZ;
+
+        // Pre-compute bounding box during construction
+        _boundingBox = ComputeBoundingBox();
+    }
+
+    // Compute bounding box during construction
+    private AxisAlignedBoundingBox ComputeBoundingBox()
+    {
+        var minHeight = float.MaxValue;
+        var maxHeight = float.MinValue;
+
+        // Find min and max height in the chunk
+        for (var z = _dataMinZ; z <= _dataMaxZ; z++)
+        {
+            for (var x = _dataMinX; x <= _dataMaxX; x++)
+            {
+                var point = _landscapeData[x, z];
+                if (point != null)
+                {
+                    if (point.Height < minHeight)
+                    {
+                        minHeight = point.Height;
+                    }
+                    if (point.Height > maxHeight)
+                    {
+                        maxHeight = point.Height;
+                    }
+                }
+            }
+        }
+
+        // If no height data found, default to 0
+        if (minHeight == float.MaxValue)
+        {
+            minHeight = 0f;
+            maxHeight = 0f;
+        }
+
+        return new AxisAlignedBoundingBox(
+            _worldMinX, minHeight, _worldMinZ,
+            _worldMaxX, maxHeight, _worldMaxZ
+        );
+    }
 
     public static IReadOnlyList<LandscapeChunk> CreateChunksFromLandscape(LandscapeModel landscape)
     {
@@ -66,17 +131,17 @@ public class LandscapeChunk(
         // Helper function to map data coordinates to world coordinates
         Vector3 GetWorldPosition(int dataX, int dataZ)
         {
-            var point = landscapeData[dataX, dataZ];
+            var point = _landscapeData[dataX, dataZ];
 
             // Map X from data coordinates to world coordinates
-            var worldX = dataMaxX == dataMinX
-                ? worldMinX
-                : worldMinX + (dataX - dataMinX) / (float)(dataMaxX - dataMinX) * (worldMaxX - worldMinX);
+            var worldX = _dataMaxX == _dataMinX
+                ? _worldMinX
+                : _worldMinX + (dataX - _dataMinX) / (float)(_dataMaxX - _dataMinX) * (_worldMaxX - _worldMinX);
 
             // Map Z from data coordinates to world coordinates
-            var worldZ = dataMaxZ == dataMinZ
-                ? worldMinZ
-                : worldMinZ + (dataZ - dataMinZ) / (float)(dataMaxZ - dataMinZ) * (worldMaxZ - worldMinZ);
+            var worldZ = _dataMaxZ == _dataMinZ
+                ? _worldMinZ
+                : _worldMinZ + (dataZ - _dataMinZ) / (float)(_dataMaxZ - _dataMinZ) * (_worldMaxZ - _worldMinZ);
 
             // Height is already in world coordinates (from LandscapePoint)
             var worldY = point?.Height ?? 0;
@@ -85,15 +150,15 @@ public class LandscapeChunk(
         }
 
         // Calculate number of quads and triangles
-        var dataWidth = dataMaxX - dataMinX;
-        var dataHeight = dataMaxZ - dataMinZ;
+        var dataWidth = _dataMaxX - _dataMinX;
+        var dataHeight = _dataMaxZ - _dataMinZ;
         var triangleCount = dataWidth * dataHeight * 2;
         var triangles = new List<ColoredTrianglesModel.Triangle>(triangleCount);
 
         // Build triangles for each quad
-        for (var z = dataMinZ; z < dataMaxZ; z++)
+        for (var z = _dataMinZ; z < _dataMaxZ; z++)
         {
-            for (var x = dataMinX; x < dataMaxX; x++)
+            for (var x = _dataMinX; x < _dataMaxX; x++)
             {
                 // Get positions for the four corners of the quad
                 var lowerLeft = GetWorldPosition(x, z);
@@ -102,10 +167,10 @@ public class LandscapeChunk(
                 var topRight = GetWorldPosition(x + 1, z + 1);
 
                 // Get colors for each corner (pre-calculated)
-                var colorLL = landscapeData[x, z]?.Color;
-                var colorLR = landscapeData[x + 1, z]?.Color;
-                var colorTL = landscapeData[x, z + 1]?.Color;
-                var colorTR = landscapeData[x + 1, z + 1]?.Color;
+                var colorLL = _landscapeData[x, z]?.Color;
+                var colorLR = _landscapeData[x + 1, z]?.Color;
+                var colorTL = _landscapeData[x, z + 1]?.Color;
+                var colorTR = _landscapeData[x + 1, z + 1]?.Color;
 
                 colorLL ??= Color.Pink;
                 colorLR ??= Color.Pink;
@@ -158,39 +223,6 @@ public class LandscapeChunk(
 
     public AxisAlignedBoundingBox GetBoundingBox()
     {
-        var minHeight = float.MaxValue;
-        var maxHeight = float.MinValue;
-
-        // Find min and max height in the chunk
-        for (var z = dataMinZ; z <= dataMaxZ; z++)
-        {
-            for (var x = dataMinX; x <= dataMaxX; x++)
-            {
-                var point = landscapeData[x, z];
-                if (point != null)
-                {
-                    if (point.Height < minHeight)
-                    {
-                        minHeight = point.Height;
-                    }
-                    if (point.Height > maxHeight)
-                    {
-                        maxHeight = point.Height;
-                    }
-                }
-            }
-        }
-
-        // If no height data found, default to 0
-        if (minHeight == float.MaxValue)
-        {
-            minHeight = 0f;
-            maxHeight = 0f;
-        }
-
-        return new AxisAlignedBoundingBox(
-            worldMinX, minHeight, worldMinZ,
-            worldMaxX, maxHeight, worldMaxZ
-        );
+        return _boundingBox;
     }
 }

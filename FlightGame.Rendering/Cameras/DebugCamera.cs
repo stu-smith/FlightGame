@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using FlightGame.Rendering.Core;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
 namespace FlightGame.Rendering.Cameras;
@@ -86,5 +87,13 @@ public class DebugCamera : ICamera
             cosPitch * cosYaw);
 
         return Matrix.CreateLookAt(_position, _position + forward, Vector3.Up);
+    }
+
+    public Frustum GetFrustum(float nearDistance, float farDistance, float fieldOfView, float aspectRatio)
+    {
+        var viewMatrix = CreateViewMatrix();
+        var projectionMatrix = Matrix.CreatePerspectiveFieldOfView(fieldOfView, aspectRatio, nearDistance, farDistance);
+        var viewProjection = viewMatrix * projectionMatrix;
+        return Frustum.CreateFromMatrix(viewProjection);
     }
 }

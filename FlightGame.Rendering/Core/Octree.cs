@@ -185,50 +185,6 @@ public class Octree<T> where T : IOctreeItem
             }
         }
 
-        private void Contains(ref BoundingFrustum boundingFrustum, ref BoundingBox box, out ContainmentType result)
-        {
-            var intersects = false;
-            Plane[] planes = [
-                boundingFrustum.Near,
-                    //boundingFrustum.Far,
-                    boundingFrustum.Left,
-                    boundingFrustum.Right,
-                    boundingFrustum.Top,
-                    boundingFrustum.Bottom
-            ];
-
-            for (var i = 0; i < planes.Length; ++i)
-            {
-                var planeIntersectionType = default(PlaneIntersectionType);
-
-                box.Intersects(ref planes[i], out planeIntersectionType);
-                switch (planeIntersectionType)
-                {
-                    case PlaneIntersectionType.Front:
-                        result = ContainmentType.Disjoint;
-                        return;
-                    case PlaneIntersectionType.Intersecting:
-                        intersects = true;
-                        break;
-                }
-            }
-            result = intersects ? ContainmentType.Intersects : ContainmentType.Contains;
-        }
-
-        bool Intersects(ref BoundingFrustum boundingFrustum, BoundingBox box)
-        {
-            var result = false;
-            this.Intersects(ref boundingFrustum, ref box, out result);
-            return result;
-        }
-
-        void Intersects(ref BoundingFrustum boundingFrustum, ref BoundingBox box, out bool result)
-        {
-            var containment = default(ContainmentType);
-            Contains(ref boundingFrustum, ref box, out containment);
-            result = containment != ContainmentType.Disjoint;
-        }
-
         public void Query(BoundingFrustum frustum, HashSet<T> results)
         {
             // Check if the node's bounds intersect with the frustum
@@ -244,7 +200,7 @@ public class Octree<T> where T : IOctreeItem
                 {
                     var itemBounds = item.GetBoundingBox();
 
-                    if (!Intersects(ref frustum, itemBounds))
+                    if (!frustum.Intersects(itemBounds))
                     {
                         continue;
                     }

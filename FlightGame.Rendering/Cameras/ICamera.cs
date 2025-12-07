@@ -29,10 +29,10 @@ public static class CameraExtensions
         var viewMatrix = camera.CreateViewMatrix();
 
         var projectionMatrix = camera.CreateProjectionMatrix(
-            fieldOfView,
-            aspectRatio,
             nearDistance,
-            farDistance
+            farDistance,
+            fieldOfView,
+            aspectRatio
         );
 
         var viewProjection = viewMatrix * projectionMatrix;

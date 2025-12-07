@@ -56,6 +56,13 @@ public class Octree<T> where T : IOctreeItem
         return [.. results];
     }
 
+    public List<T> Query(Frustum frustum)
+    {
+        var results = new HashSet<T>();
+        _root.Query(frustum, results);
+        return [.. results];
+    }
+
     public List<T> GetAllItems()
     {
         var results = new HashSet<T>();
@@ -172,6 +179,36 @@ public class Octree<T> where T : IOctreeItem
                 foreach (var child in _children)
                 {
                     child.Query(point, results);
+                }
+            }
+        }
+
+        public void Query(Frustum frustum, HashSet<T> results)
+        {
+            // Check if the node's bounds intersect with the frustum
+            if (!frustum.Intersects(_bounds))
+            {
+                return;
+            }
+
+            if (_children == null)
+            {
+                // Leaf node: check each item's bounding box against the frustum
+                foreach (var item in _items)
+                {
+                    var itemBounds = item.GetBoundingBox();
+                    if (frustum.Intersects(itemBounds))
+                    {
+                        results.Add(item);
+                    }
+                }
+            }
+            else
+            {
+                // Internal node: recursively query children
+                foreach (var child in _children)
+                {
+                    child.Query(frustum, results);
                 }
             }
         }

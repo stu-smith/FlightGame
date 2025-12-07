@@ -74,7 +74,12 @@ public class World : IRenderable
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        var allChunks = _octree.GetAllItems();
+        if(renderContext.ViewFrustum == null)
+        {
+            throw new InvalidOperationException("View frustum is not set in render context.");
+        }
+
+        var allChunks = _octree.Query(renderContext.ViewFrustum.Value);
 
         foreach (var item in allChunks)
         {

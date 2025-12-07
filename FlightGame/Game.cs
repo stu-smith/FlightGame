@@ -135,7 +135,8 @@ public class Game : Microsoft.Xna.Framework.Game
             _nearPlane,
             _farPlane,
             _fieldOfView,
-            _device.Viewport.AspectRatio);
+            _device.Viewport.AspectRatio
+        );
 
         // Rotate the world around the center of the terrain instead of the global origin
         var worldMatrix = Matrix.CreateRotationY(_angle);
@@ -150,6 +151,13 @@ public class Game : Microsoft.Xna.Framework.Game
         _effect.Parameters["xLightDirection"].SetValue(lightDirection);
         _effect.Parameters["xAmbient"].SetValue(0.3f);
         _effect.Parameters["xEnableLighting"].SetValue(true);
+
+        _renderContext.ViewFrustum = _camera.GetFrustum(
+            _nearPlane,
+            _farPlane,
+            _fieldOfView,
+            _device.Viewport.AspectRatio
+        );
 
         _performanceCounter.BeginFrame();
 

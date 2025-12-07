@@ -23,6 +23,7 @@ public struct Frustum
 
     public readonly bool Contains(Vector3 point)
     {
+        // Try inward-facing normals: inside = positive dot product
         return Near.DotCoordinate(point) >= 0 &&
                Far.DotCoordinate(point) >= 0 &&
                Left.DotCoordinate(point) >= 0 &&
@@ -33,74 +34,60 @@ public struct Frustum
 
     public readonly bool Contains(AxisAlignedBoundingBox box)
     {
-        // Check if any corner of the box is inside the frustum
-        var corners = new Vector3[8];
-        corners[0] = new Vector3(box.Min.X, box.Min.Y, box.Min.Z);
-        corners[1] = new Vector3(box.Max.X, box.Min.Y, box.Min.Z);
-        corners[2] = new Vector3(box.Min.X, box.Max.Y, box.Min.Z);
-        corners[3] = new Vector3(box.Max.X, box.Max.Y, box.Min.Z);
-        corners[4] = new Vector3(box.Min.X, box.Min.Y, box.Max.Z);
-        corners[5] = new Vector3(box.Max.X, box.Min.Y, box.Max.Z);
-        corners[6] = new Vector3(box.Min.X, box.Max.Y, box.Max.Z);
-        corners[7] = new Vector3(box.Max.X, box.Max.Y, box.Max.Z);
-
-        // If all corners are outside any plane, the box is outside
+        // Check if the box is completely inside the frustum
+        // A box is inside if the "negative vertex" (farthest in the opposite direction of the normal) is inside all planes
         var planes = new[] { Near, Far, Left, Right, Top, Bottom };
         
         foreach (var plane in planes)
         {
-            var allOutside = true;
-            foreach (var corner in corners)
+            // Find the "negative vertex" - the vertex of the box that is farthest opposite to the plane normal
+            // If this vertex is outside the plane, then at least part of the box is outside
+            var negativeVertex = new Vector3(
+                plane.Normal.X >= 0 ? box.Min.X : box.Max.X,
+                plane.Normal.Y >= 0 ? box.Min.Y : box.Max.Y,
+                plane.Normal.Z >= 0 ? box.Min.Z : box.Max.Z
+            );
+
+            // For inward-facing normals: inside = positive dot product
+            // If the negative vertex is outside (negative dot product), the box is not completely inside
+            if (plane.DotCoordinate(negativeVertex) < 0)
             {
-                if (plane.DotCoordinate(corner) >= 0)
-                {
-                    allOutside = false;
-                    break;
-                }
-            }
-            if (allOutside)
-            {
-                return false;
+                return false; // Box is at least partially outside this plane
             }
         }
 
-        return true;
+        return true; // Box is completely inside the frustum
     }
 
     public readonly bool Intersects(AxisAlignedBoundingBox box)
     {
-        // Check if the box intersects the frustum
-        // A box intersects if it's not completely outside any plane
-        var corners = new Vector3[8];
-        corners[0] = new Vector3(box.Min.X, box.Min.Y, box.Min.Z);
-        corners[1] = new Vector3(box.Max.X, box.Min.Y, box.Min.Z);
-        corners[2] = new Vector3(box.Min.X, box.Max.Y, box.Min.Z);
-        corners[3] = new Vector3(box.Max.X, box.Max.Y, box.Min.Z);
-        corners[4] = new Vector3(box.Min.X, box.Min.Y, box.Max.Z);
-        corners[5] = new Vector3(box.Max.X, box.Min.Y, box.Max.Z);
-        corners[6] = new Vector3(box.Min.X, box.Max.Y, box.Max.Z);
-        corners[7] = new Vector3(box.Max.X, box.Max.Y, box.Max.Z);
-
+        // Check if the box intersects the frustum using the positive/negative vertex method
+        // A box is outside the frustum if it's completely on the "outside" side of any plane
         var planes = new[] { Near, Far, Left, Right, Top, Bottom };
         
         foreach (var plane in planes)
         {
-            var allOutside = true;
-            foreach (var corner in corners)
+            // Find the "positive vertex" - the vertex of the box that is farthest in the direction of the plane normal
+            // If this vertex is outside the plane, the entire box is outside
+            var positiveVertex = new Vector3(
+                plane.Normal.X >= 0 ? box.Max.X : box.Min.X,
+                plane.Normal.Y >= 0 ? box.Max.Y : box.Min.Y,
+                plane.Normal.Z >= 0 ? box.Max.Z : box.Min.Z
+            );
+
+            // Check if the positive vertex is outside the plane
+            // For outward-facing normals: inside = negative, outside = positive
+            // For inward-facing normals: inside = positive, outside = negative
+            // Try inward-facing first (negative = outside)
+            var dotProduct = plane.DotCoordinate(positiveVertex);
+            
+            if (dotProduct < 0)
             {
-                if (plane.DotCoordinate(corner) >= 0)
-                {
-                    allOutside = false;
-                    break;
-                }
-            }
-            if (allOutside)
-            {
-                return false;
+                return false; // Box is completely outside this plane (inward-facing normals)
             }
         }
 
-        return true;
+        return true; // Box intersects or is inside the frustum
     }
 
     public static Frustum CreateFromMatrix(Matrix viewProjection)

@@ -614,7 +614,8 @@ public class VolcanicIslandGenerator
         }
         else if (height <= parameters.VolcanicRockHeight)
         {
-            var t = (height - parameters.SeaLevel) / (parameters.VolcanicRockHeight - parameters.SeaLevel);
+            // Interpolate between beach and volcanic rock
+            var t = (height - parameters.BeachHeight) / (parameters.VolcanicRockHeight - parameters.BeachHeight);
             return Color.Lerp(parameters.BeachColor, parameters.VolcanicRockColor, t);
         }
         else if (height <= parameters.DarkRockHeight)

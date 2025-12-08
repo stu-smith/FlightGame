@@ -525,7 +525,7 @@ public class ArchipelagoGenerator
         else if (height <= parameters.GrassHeight)
         {
             // Interpolate between beach and grass
-            var t = (height - parameters.SeaLevel) / (parameters.GrassHeight - parameters.SeaLevel);
+            var t = (height - parameters.BeachHeight) / (parameters.GrassHeight - parameters.BeachHeight);
             return Color.Lerp(parameters.BeachColor, parameters.GrassColor, t);
         }
         else if (height <= parameters.RockHeight)

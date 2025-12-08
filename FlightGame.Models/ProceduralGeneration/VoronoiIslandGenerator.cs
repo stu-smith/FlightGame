@@ -92,6 +92,21 @@ public class VoronoiIslandGenerator
         public float SmoothingStrength { get; set; } = 0.3f;
 
         /// <summary>
+        /// Enable noise to roughen the terrain.
+        /// </summary>
+        public bool EnableNoise { get; set; } = true;
+
+        /// <summary>
+        /// Noise strength as a fraction of max height (0.0 to 1.0).
+        /// </summary>
+        public float NoiseStrength { get; set; } = 0.08f;
+
+        /// <summary>
+        /// Noise scale for terrain roughness (lower = larger noise features).
+        /// </summary>
+        public float TerrainNoiseScale { get; set; } = 0.15f;
+
+        /// <summary>
         /// Minimum height for water (sea level).
         /// </summary>
         public float SeaLevel { get; set; } = 0.0f;
@@ -206,13 +221,19 @@ public class VoronoiIslandGenerator
         // Step 8: Rasterize polygons to heightmap
         var heightmap = RasterizeToHeightmap(polygons, parameters);
 
-        // Step 9: Apply smoothing
+        // Step 9: Apply noise to roughen terrain
+        if (parameters.EnableNoise)
+        {
+            ApplyTerrainNoise(heightmap, parameters, random);
+        }
+
+        // Step 10: Apply smoothing
         if (parameters.EnableSmoothing)
         {
             ApplySmoothing(heightmap, parameters);
         }
 
-        // Step 10: Generate colors
+        // Step 11: Generate colors
         var result = new Sparse2dArray<LandscapePoint>(
             -halfSize, halfSize,
             -halfSize, halfSize
@@ -681,6 +702,38 @@ public class VoronoiIslandGenerator
         }
 
         return heightmap;
+    }
+
+    private void ApplyTerrainNoise(Sparse2dArray<float> heightmap, GenerationParameters parameters, Random random)
+    {
+        var offsetX = (float)(random.NextDouble() * 10000);
+        var offsetY = (float)(random.NextDouble() * 10000);
+        var noiseAmplitude = parameters.MaxHeight * parameters.NoiseStrength;
+
+        for (var x = heightmap.MinX; x <= heightmap.MaxX; x++)
+        {
+            for (var y = heightmap.MinY; y <= heightmap.MaxY; y++)
+            {
+                var height = heightmap[x, y];
+                
+                // Only add noise to land areas (above sea level)
+                if (height > parameters.SeaLevel)
+                {
+                    var nx = (x + offsetX) * parameters.TerrainNoiseScale;
+                    var ny = (y + offsetY) * parameters.TerrainNoiseScale;
+
+                    // Use simple noise function (reuse existing method)
+                    var noise = SimpleNoise(nx, ny, random);
+                    var noiseValue = (noise - 0.5f) * 2.0f; // Convert from 0-1 to -1 to 1
+                    
+                    // Scale noise by height (less noise at lower elevations, more at higher)
+                    var heightFactor = (height - parameters.SeaLevel) / (parameters.MaxHeight - parameters.SeaLevel);
+                    var scaledNoise = noiseValue * noiseAmplitude * heightFactor;
+                    
+                    heightmap[x, y] = Math.Max(parameters.SeaLevel, height + scaledNoise);
+                }
+            }
+        }
     }
 
     private static void ApplySmoothing(Sparse2dArray<float> heightmap, GenerationParameters parameters)

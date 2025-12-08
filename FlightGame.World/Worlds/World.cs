@@ -21,12 +21,9 @@ public class World : IRenderable
 
         var landscapeModel = new LandscapeModel(_worldSize);
 
-        var proceduralIsland = new ArchipelagoGenerator()
-            .GenerateIsland(new ArchipelagoGenerator.GenerationParameters
+        var proceduralIsland = new VolcanicIslandGenerator()
+            .GenerateIsland(new VolcanicIslandGenerator.GenerationParameters
             {
-                IslandRadius = 2f,
-                NoiseScale = 0.005f,
-                MaxHeight = 1000f
             });
 
         landscapeModel.AddLandscapeData(proceduralIsland, 0, 0);

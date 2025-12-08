@@ -122,12 +122,8 @@ public class LandscapeModel
                 // Add heights cumulatively (like AddHeightMap does)
                 var cumulativeHeight = (currentPoint?.Height ?? 0f) + sourcePoint.Height;
                 
-                // Preserve color from source if it's not black, otherwise keep existing color or use black
-                var color = sourcePoint.Color != Color.Black 
-                    ? sourcePoint.Color 
-                    : (currentPoint?.Color ?? Color.Black);
-
-                _points[targetX, targetY] = new LandscapePoint(cumulativeHeight, color);
+                // Set color to Black (like AddHeightMap does) to allow AutoAssignColors to work consistently
+                _points[targetX, targetY] = new LandscapePoint(cumulativeHeight, Color.Black);
             }
         }
     }

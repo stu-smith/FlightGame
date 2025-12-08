@@ -5,14 +5,14 @@ using Microsoft.Xna.Framework;
 namespace FlightGame.Models.ProceduralGeneration;
 
 /// <summary>
-/// Generates procedural islands with heightmap and color data, including erosion techniques.
+/// Generates a single procedural volcanic island with a central peak, caldera, and volcanic features.
 /// </summary>
-public class ArchipelagoGenerator
+public class VolcanicIslandGenerator
 {
     private readonly Random _random;
 
     /// <summary>
-    /// Parameters for island generation.
+    /// Parameters for volcanic island generation.
     /// </summary>
     public class GenerationParameters
     {
@@ -27,59 +27,84 @@ public class ArchipelagoGenerator
         public int Seed { get; set; } = 0;
 
         /// <summary>
-        /// Maximum height of the island.
+        /// Maximum height of the volcano peak.
         /// </summary>
-        public float MaxHeight { get; set; } = 100.0f;
+        public float MaxHeight { get; set; } = 150.0f;
 
         /// <summary>
-        /// Base noise scale (lower = larger features).
+        /// Base radius of the volcano as a fraction of size (0.0 to 1.0).
         /// </summary>
-        public float NoiseScale { get; set; } = 0.05f;
+        public float BaseRadius { get; set; } = 0.4f;
+
+        /// <summary>
+        /// Steepness of the volcano slopes (higher = steeper).
+        /// </summary>
+        public float SlopeSteepness { get; set; } = 2.0f;
+
+        /// <summary>
+        /// Enable caldera (crater) at the peak.
+        /// </summary>
+        public bool EnableCaldera { get; set; } = true;
+
+        /// <summary>
+        /// Radius of the caldera as a fraction of base radius (0.0 to 1.0).
+        /// </summary>
+        public float CalderaRadius { get; set; } = 0.15f;
+
+        /// <summary>
+        /// Depth of the caldera as a fraction of max height (0.0 to 1.0).
+        /// </summary>
+        public float CalderaDepth { get; set; } = 0.2f;
+
+        /// <summary>
+        /// Noise scale for adding detail to the volcano (lower = larger features).
+        /// </summary>
+        public float NoiseScale { get; set; } = 0.08f;
+
+        /// <summary>
+        /// Noise strength as a fraction of max height (0.0 to 1.0).
+        /// </summary>
+        public float NoiseStrength { get; set; } = 0.15f;
 
         /// <summary>
         /// Number of octaves for fractal noise.
         /// </summary>
-        public int Octaves { get; set; } = 6;
+        public int Octaves { get; set; } = 4;
 
         /// <summary>
-        /// Persistence for fractal noise (how much each octave contributes).
+        /// Persistence for fractal noise.
         /// </summary>
         public float Persistence { get; set; } = 0.5f;
 
         /// <summary>
-        /// Lacunarity for fractal noise (frequency multiplier between octaves).
+        /// Lacunarity for fractal noise.
         /// </summary>
         public float Lacunarity { get; set; } = 2.0f;
 
         /// <summary>
-        /// Island shape falloff strength (higher = steeper edges).
+        /// Island edge falloff strength (higher = steeper edges).
         /// </summary>
-        public float IslandFalloff { get; set; } = 2.5f;
+        public float EdgeFalloff { get; set; } = 3.0f;
 
         /// <summary>
-        /// Island radius as a fraction of size (0.0 to 1.0).
-        /// </summary>
-        public float IslandRadius { get; set; } = 0.45f;
-
-        /// <summary>
-        /// Enable thermal erosion.
+        /// Enable thermal erosion (lighter for volcanic terrain).
         /// </summary>
         public bool EnableThermalErosion { get; set; } = true;
 
         /// <summary>
         /// Number of thermal erosion iterations.
         /// </summary>
-        public int ThermalErosionIterations { get; set; } = 3;
+        public int ThermalErosionIterations { get; set; } = 2;
 
         /// <summary>
         /// Thermal erosion strength (0.0 to 1.0).
         /// </summary>
-        public float ThermalErosionStrength { get; set; } = 0.3f;
+        public float ThermalErosionStrength { get; set; } = 0.2f;
 
         /// <summary>
         /// Angle threshold for thermal erosion (in radians).
         /// </summary>
-        public float ThermalErosionAngle { get; set; } = 0.5f;
+        public float ThermalErosionAngle { get; set; } = 0.6f;
 
         /// <summary>
         /// Enable hydraulic erosion.
@@ -89,17 +114,17 @@ public class ArchipelagoGenerator
         /// <summary>
         /// Number of hydraulic erosion drops.
         /// </summary>
-        public int HydraulicErosionDrops { get; set; } = 50000;
+        public int HydraulicErosionDrops { get; set; } = 30000;
 
         /// <summary>
         /// Hydraulic erosion strength (0.0 to 1.0).
         /// </summary>
-        public float HydraulicErosionStrength { get; set; } = 0.05f;
+        public float HydraulicErosionStrength { get; set; } = 0.03f;
 
         /// <summary>
-        /// Hydraulic erosion capacity (how much sediment can be carried).
+        /// Hydraulic erosion capacity.
         /// </summary>
-        public float HydraulicErosionCapacity { get; set; } = 0.1f;
+        public float HydraulicErosionCapacity { get; set; } = 0.08f;
 
         /// <summary>
         /// Hydraulic erosion deposition rate.
@@ -119,17 +144,17 @@ public class ArchipelagoGenerator
         /// <summary>
         /// Height threshold for beach/sand color.
         /// </summary>
-        public float BeachHeight { get; set; } = 5.0f;
+        public float BeachHeight { get; set; } = 8.0f;
 
         /// <summary>
-        /// Height threshold for grass/land color.
+        /// Height threshold for volcanic rock color.
         /// </summary>
-        public float GrassHeight { get; set; } = 20.0f;
+        public float VolcanicRockHeight { get; set; } = 40.0f;
 
         /// <summary>
-        /// Height threshold for rock/mountain color.
+        /// Height threshold for dark volcanic rock.
         /// </summary>
-        public float RockHeight { get; set; } = 60.0f;
+        public float DarkRockHeight { get; set; } = 80.0f;
 
         /// <summary>
         /// Color for water/sea areas.
@@ -137,47 +162,38 @@ public class ArchipelagoGenerator
         public Color WaterColor { get; set; } = new Color(30, 60, 120);
 
         /// <summary>
-        /// Color for beach/sand areas.
+        /// Color for beach/ash areas.
         /// </summary>
-        public Color BeachColor { get; set; } = new Color(240, 220, 180);
+        public Color BeachColor { get; set; } = new Color(180, 170, 160);
 
         /// <summary>
-        /// Color for grass/land areas.
+        /// Color for volcanic rock areas.
         /// </summary>
-        public Color GrassColor { get; set; } = new Color(50, 150, 50);
+        public Color VolcanicRockColor { get; set; } = new Color(120, 80, 70);
 
         /// <summary>
-        /// Color for rock/mountain areas.
+        /// Color for dark volcanic rock.
         /// </summary>
-        public Color RockColor { get; set; } = new Color(100, 100, 100);
+        public Color DarkRockColor { get; set; } = new Color(60, 50, 50);
 
         /// <summary>
-        /// Color for snow/peak areas.
+        /// Color for peak/ash areas.
         /// </summary>
-        public Color SnowColor { get; set; } = new Color(255, 255, 255);
+        public Color PeakColor { get; set; } = new Color(100, 90, 85);
     }
 
-    public ArchipelagoGenerator()
+    public VolcanicIslandGenerator()
     {
         _random = new Random();
     }
 
-    public ArchipelagoGenerator(int seed)
+    public VolcanicIslandGenerator(int seed)
     {
         _random = new Random(seed);
     }
 
-    private Random GetRandom(GenerationParameters parameters)
-    {
-        if (parameters.Seed != 0)
-        {
-            return new Random(parameters.Seed);
-        }
-        return _random;
-    }
-
     /// <summary>
-    /// Generates a procedural island with heightmap and color data.
+    /// Generates a procedural volcanic island with heightmap and color data.
     /// </summary>
     /// <param name="parameters">Generation parameters.</param>
     /// <returns>A sparse 2D array containing height and color data for each point.</returns>
@@ -192,25 +208,34 @@ public class ArchipelagoGenerator
             -halfSize, halfSize
         );
 
-        // Step 1: Generate base heightmap using noise
-        GenerateBaseHeightmap(heightmap, parameters, random);
+        // Step 1: Generate base volcano cone shape
+        GenerateVolcanoCone(heightmap, parameters, random);
 
-        // Step 2: Apply island mask (radial falloff)
-        ApplyIslandMask(heightmap, parameters);
+        // Step 2: Apply caldera if enabled
+        if (parameters.EnableCaldera)
+        {
+            ApplyCaldera(heightmap, parameters);
+        }
 
-        // Step 3: Apply thermal erosion
+        // Step 3: Add noise detail
+        AddNoiseDetail(heightmap, parameters, random);
+
+        // Step 4: Apply island edge falloff
+        ApplyEdgeFalloff(heightmap, parameters);
+
+        // Step 5: Apply thermal erosion
         if (parameters.EnableThermalErosion)
         {
             ApplyThermalErosion(heightmap, parameters);
         }
 
-        // Step 4: Apply hydraulic erosion
+        // Step 6: Apply hydraulic erosion
         if (parameters.EnableHydraulicErosion)
         {
             ApplyHydraulicErosion(heightmap, parameters, random);
         }
 
-        // Step 5: Generate colors based on height
+        // Step 7: Generate colors based on height
         var result = new Sparse2dArray<LandscapePoint>(
             -halfSize, halfSize,
             -halfSize, halfSize
@@ -229,20 +254,92 @@ public class ArchipelagoGenerator
         return result;
     }
 
-    private static void GenerateBaseHeightmap(Sparse2dArray<float> heightmap, GenerationParameters parameters, Random random)
+    private Random GetRandom(GenerationParameters parameters)
     {
-        var offsetX = (float)(random.NextDouble() * 10000);
-        var offsetY = (float)(random.NextDouble() * 10000);
+        if (parameters.Seed != 0)
+        {
+            return new Random(parameters.Seed);
+        }
+        return _random;
+    }
+
+    private static void GenerateVolcanoCone(Sparse2dArray<float> heightmap, GenerationParameters parameters, Random random)
+    {
+        var centerX = (heightmap.MinX + heightmap.MaxX) / 2.0f;
+        var centerY = (heightmap.MinY + heightmap.MaxY) / 2.0f;
+        var maxRadius = (parameters.Size / 2.0f) * parameters.BaseRadius;
 
         for (var x = heightmap.MinX; x <= heightmap.MaxX; x++)
         {
             for (var y = heightmap.MinY; y <= heightmap.MaxY; y++)
             {
+                var dx = x - centerX;
+                var dy = y - centerY;
+                var distance = Math.Sqrt(dx * dx + dy * dy);
+
+                if (distance <= maxRadius)
+                {
+                    // Create cone shape: height decreases with distance from center
+                    var normalizedDistance = distance / maxRadius;
+                    var height = parameters.MaxHeight * (1.0f - (float)Math.Pow(normalizedDistance, parameters.SlopeSteepness));
+                    heightmap[x, y] = Math.Max(parameters.SeaLevel, height);
+                }
+                else
+                {
+                    heightmap[x, y] = parameters.SeaLevel;
+                }
+            }
+        }
+    }
+
+    private static void ApplyCaldera(Sparse2dArray<float> heightmap, GenerationParameters parameters)
+    {
+        var centerX = (heightmap.MinX + heightmap.MaxX) / 2.0f;
+        var centerY = (heightmap.MinY + heightmap.MaxY) / 2.0f;
+        var maxRadius = (parameters.Size / 2.0f) * parameters.BaseRadius;
+        var calderaRadius = maxRadius * parameters.CalderaRadius;
+        var calderaDepth = parameters.MaxHeight * parameters.CalderaDepth;
+
+        for (var x = heightmap.MinX; x <= heightmap.MaxX; x++)
+        {
+            for (var y = heightmap.MinY; y <= heightmap.MaxY; y++)
+            {
+                var dx = x - centerX;
+                var dy = y - centerY;
+                var distance = Math.Sqrt(dx * dx + dy * dy);
+
+                if (distance <= calderaRadius)
+                {
+                    // Create caldera: subtract depth from the peak
+                    var currentHeight = heightmap[x, y];
+                    heightmap[x, y] = Math.Max(parameters.SeaLevel, currentHeight - calderaDepth);
+                }
+            }
+        }
+    }
+
+    private static void AddNoiseDetail(Sparse2dArray<float> heightmap, GenerationParameters parameters, Random random)
+    {
+        var offsetX = (float)(random.NextDouble() * 10000);
+        var offsetY = (float)(random.NextDouble() * 10000);
+        var noiseAmplitude = parameters.MaxHeight * parameters.NoiseStrength;
+
+        for (var x = heightmap.MinX; x <= heightmap.MaxX; x++)
+        {
+            for (var y = heightmap.MinY; y <= heightmap.MaxY; y++)
+            {
+                if (heightmap[x, y] <= parameters.SeaLevel)
+                {
+                    continue; // Don't add noise to sea level areas
+                }
+
                 var nx = (x + offsetX) * parameters.NoiseScale;
                 var ny = (y + offsetY) * parameters.NoiseScale;
 
-                var value = FractalNoise(nx, ny, parameters);
-                heightmap[x, y] = value * parameters.MaxHeight;
+                var noise = FractalNoise(nx, ny, parameters);
+                var noiseValue = (noise - 0.5f) * 2.0f; // Convert from 0-1 to -1 to 1
+                heightmap[x, y] += noiseValue * noiseAmplitude;
+                heightmap[x, y] = Math.Max(parameters.SeaLevel, heightmap[x, y]);
             }
         }
     }
@@ -307,17 +404,17 @@ public class ArchipelagoGenerator
 
     private static int Hash(int x, int y)
     {
-        // Simple hash function for Perlin noise permutation
         var n = x + y * 57;
         n = (n << 13) ^ n;
         return ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) % 256;
     }
 
-    private static void ApplyIslandMask(Sparse2dArray<float> heightmap, GenerationParameters parameters)
+    private static void ApplyEdgeFalloff(Sparse2dArray<float> heightmap, GenerationParameters parameters)
     {
         var centerX = (heightmap.MinX + heightmap.MaxX) / 2.0f;
         var centerY = (heightmap.MinY + heightmap.MaxY) / 2.0f;
-        var maxRadius = (parameters.Size / 2.0f) * parameters.IslandRadius;
+        var maxRadius = (parameters.Size / 2.0f) * parameters.BaseRadius;
+        var edgeRadius = parameters.Size / 2.0f;
 
         for (var x = heightmap.MinX; x <= heightmap.MaxX; x++)
         {
@@ -326,17 +423,20 @@ public class ArchipelagoGenerator
                 var dx = x - centerX;
                 var dy = y - centerY;
                 var distance = Math.Sqrt(dx * dx + dy * dy);
-                var normalizedDistance = distance / maxRadius;
 
-                if (normalizedDistance >= 1.0)
+                if (distance > maxRadius)
                 {
-                    heightmap[x, y] = parameters.SeaLevel;
-                }
-                else
-                {
-                    // Apply falloff curve
-                    var falloff = 1.0 - Math.Pow(normalizedDistance, parameters.IslandFalloff);
-                    heightmap[x, y] = Math.Max(parameters.SeaLevel, heightmap[x, y] * (float)falloff);
+                    // Apply edge falloff
+                    var normalizedDistance = (distance - maxRadius) / (edgeRadius - maxRadius);
+                    if (normalizedDistance >= 1.0)
+                    {
+                        heightmap[x, y] = parameters.SeaLevel;
+                    }
+                    else
+                    {
+                        var falloff = 1.0 - Math.Pow(normalizedDistance, parameters.EdgeFalloff);
+                        heightmap[x, y] = Math.Max(parameters.SeaLevel, heightmap[x, y] * (float)falloff);
+                    }
                 }
             }
         }
@@ -370,7 +470,6 @@ public class ArchipelagoGenerator
                     var totalDifference = 0.0f;
                     var neighborCount = 0;
 
-                    // Check 4 neighbors (N, S, E, W)
                     var neighbors = new[] { (0, -1), (0, 1), (-1, 0), (1, 0) };
 
                     foreach (var (dx, dy) in neighbors)
@@ -398,7 +497,6 @@ public class ArchipelagoGenerator
                         }
                     }
 
-                    // If slope is too steep, move material downhill
                     // Compare slope (height/distance) with tan(angle) since angle is in radians
                     var angleThreshold = (float)Math.Tan(parameters.ThermalErosionAngle);
                     if (maxSlope > angleThreshold && neighborCount > 0)
@@ -406,7 +504,6 @@ public class ArchipelagoGenerator
                         var amountToMove = parameters.ThermalErosionStrength * (totalDifference / neighborCount);
                         heightmap[x, y] = height - amountToMove;
 
-                        // Distribute to neighbors
                         foreach (var (dx, dy) in neighbors)
                         {
                             var nx = x + dx;
@@ -434,7 +531,6 @@ public class ArchipelagoGenerator
     {
         for (var drop = 0; drop < parameters.HydraulicErosionDrops; drop++)
         {
-            // Random starting position
             var x = random.Next(heightmap.MinX, heightmap.MaxX + 1);
             var y = random.Next(heightmap.MinY, heightmap.MaxY + 1);
 
@@ -451,7 +547,6 @@ public class ArchipelagoGenerator
 
                 var currentHeight = heightmap[x, y];
 
-                // Find lowest neighbor
                 var lowestHeight = currentHeight;
                 var lowestX = x;
                 var lowestY = y;
@@ -479,13 +574,11 @@ public class ArchipelagoGenerator
 
                 if (!foundLower)
                 {
-                    // Deposit sediment and evaporate
                     heightmap[x, y] += sediment * parameters.HydraulicErosionDeposition;
                     water *= (1.0f - parameters.HydraulicErosionEvaporation);
                     break;
                 }
 
-                // Erode and transport
                 var heightDiff = currentHeight - lowestHeight;
                 var capacity = Math.Max(0.0f, heightDiff) * water * parameters.HydraulicErosionCapacity;
                 // Ensure erosion is non-negative to prevent adding material instead of eroding
@@ -494,7 +587,6 @@ public class ArchipelagoGenerator
                 heightmap[x, y] -= erosion;
                 sediment += erosion;
 
-                // Deposit excess sediment before moving
                 var excessSediment = sediment - capacity;
                 if (excessSediment > 0)
                 {
@@ -502,11 +594,9 @@ public class ArchipelagoGenerator
                     sediment -= excessSediment;
                 }
 
-                // Move to lowest neighbor
                 x = lowestX;
                 y = lowestY;
 
-                // Evaporate water
                 water *= (1.0f - parameters.HydraulicErosionEvaporation);
             }
         }
@@ -522,23 +612,20 @@ public class ArchipelagoGenerator
         {
             return parameters.BeachColor;
         }
-        else if (height <= parameters.GrassHeight)
+        else if (height <= parameters.VolcanicRockHeight)
         {
-            // Interpolate between beach and grass
-            var t = (height - parameters.SeaLevel) / (parameters.GrassHeight - parameters.SeaLevel);
-            return Color.Lerp(parameters.BeachColor, parameters.GrassColor, t);
+            var t = (height - parameters.SeaLevel) / (parameters.VolcanicRockHeight - parameters.SeaLevel);
+            return Color.Lerp(parameters.BeachColor, parameters.VolcanicRockColor, t);
         }
-        else if (height <= parameters.RockHeight)
+        else if (height <= parameters.DarkRockHeight)
         {
-            // Interpolate between grass and rock
-            var t = (height - parameters.GrassHeight) / (parameters.RockHeight - parameters.GrassHeight);
-            return Color.Lerp(parameters.GrassColor, parameters.RockColor, t);
+            var t = (height - parameters.VolcanicRockHeight) / (parameters.DarkRockHeight - parameters.VolcanicRockHeight);
+            return Color.Lerp(parameters.VolcanicRockColor, parameters.DarkRockColor, t);
         }
         else
         {
-            // Interpolate between rock and snow
-            var t = Math.Min(1.0f, (height - parameters.RockHeight) / (parameters.MaxHeight - parameters.RockHeight));
-            return Color.Lerp(parameters.RockColor, parameters.SnowColor, t);
+            var t = Math.Min(1.0f, (height - parameters.DarkRockHeight) / (parameters.MaxHeight - parameters.DarkRockHeight));
+            return Color.Lerp(parameters.DarkRockColor, parameters.PeakColor, t);
         }
     }
 }

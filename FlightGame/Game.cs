@@ -27,7 +27,7 @@ public class Game : Microsoft.Xna.Framework.Game
     private readonly PerformanceCounter _performanceCounter = new();
     private SpriteFont? _font;
     private SpriteBatch? _spriteBatch;
-    private World.Worlds.World _world = new();
+    private readonly World.Worlds.World _world = new();
     private readonly RenderContext _renderContext;
 
     public Game()
@@ -71,6 +71,7 @@ public class Game : Microsoft.Xna.Framework.Game
         SetUpCamera();
 
         _world.SetDevice(_device);
+        _world.LoadContent(Content);
     }
 
     protected override void Update(GameTime gameTime)

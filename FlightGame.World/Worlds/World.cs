@@ -3,8 +3,12 @@ using FlightGame.Models.ProceduralGeneration;
 using FlightGame.Rendering;
 using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Landscape;
+using FlightGame.Rendering.Models;
+using FlightGame.Rendering.Models.Importers;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using SharpDX.MediaFoundation;
 
 namespace FlightGame.World.Worlds;
 
@@ -14,6 +18,8 @@ public class World : IRenderable
 
     private GraphicsDevice? _device;
     private readonly Octree<IRenderable> _octree = new(_worldSize);
+
+    private ObjModel? _testObjModel;
 
     public World()
     {
@@ -94,6 +100,11 @@ public class World : IRenderable
         {
             item.Render(effect, renderContext);
         }
+
+        var moveMatrix = Matrix.CreateTranslation(60f, 800f, -900f);
+
+        effect.Parameters["xWorld"].SetValue(moveMatrix);
+        _testObjModel!.Render(effect, renderContext);
     }
 
     public BoundingBox GetBoundingBox()
@@ -102,5 +113,17 @@ public class World : IRenderable
         return new BoundingBox(
             new Vector3(-halfSize, -halfSize, -halfSize),
             new Vector3(halfSize, halfSize, halfSize));
+    }
+
+    public void LoadContent(ContentManager content)
+    {
+        if(_device == null)
+        {
+            throw new InvalidOperationException("Graphics device is not initialized.");
+        }
+
+        const string assetName = "Models/Test";
+
+        _testObjModel = new(_device, content, assetName);
     }
 }

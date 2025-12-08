@@ -22,4 +22,13 @@
 #begin Fonts/DefaultFont.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
 /build:Fonts/DefaultFont.spritefont
+
+#begin Models/Test.mtl
+/copy:Models/Test.mtl
+
+#begin Models/Test.obj
+/copy:Models/Test.obj
+

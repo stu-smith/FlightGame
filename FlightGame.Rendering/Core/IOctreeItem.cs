@@ -1,8 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 
 namespace FlightGame.Rendering.Core;
 
 public interface IOctreeItem
 {
-    BoundingBox GetBoundingBox();
+    BoundingSphere GetBoundingSphere();
 }

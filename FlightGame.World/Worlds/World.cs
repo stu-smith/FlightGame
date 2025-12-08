@@ -1,14 +1,12 @@
-﻿using FlightGame.Models.Landscape;
+using FlightGame.Models.Landscape;
 using FlightGame.Models.ProceduralGeneration;
 using FlightGame.Rendering;
 using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Landscape;
 using FlightGame.Rendering.Models;
-using FlightGame.Rendering.Models.Importers;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using SharpDX.MediaFoundation;
 
 namespace FlightGame.World.Worlds;
 
@@ -63,7 +61,7 @@ public class World : IRenderable
         landscapeModel.AutoAssignColors(colorStops);
 
         var landscapeChunks = LandscapeChunk.CreateChunksFromLandscape(landscapeModel);
-        
+
         foreach (var chunk in landscapeChunks)
         {
             _octree.Insert(chunk);
@@ -89,7 +87,7 @@ public class World : IRenderable
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        if(renderContext.ViewFrustum == null)
+        if (renderContext.ViewFrustum == null)
         {
             throw new InvalidOperationException("View frustum is not set in render context.");
         }
@@ -107,18 +105,25 @@ public class World : IRenderable
         _testObjModel!.Render(effect, renderContext);
     }
 
-    public BoundingBox GetBoundingBox()
+    public BoundingSphere GetBoundingSphere()
     {
         var halfSize = _worldSize / 2;
-        return new BoundingBox(
-            new Vector3(-halfSize, -halfSize, -halfSize),
-            new Vector3(halfSize, halfSize, halfSize));
+        var center = Vector3.Zero;
+        // For a cube, the radius is half the diagonal length
+        var radius = (float)(halfSize * Math.Sqrt(3.0));
+        return new BoundingSphere(center, radius);
     }
 
     public void LoadContent(ContentManager content)
     {
+        if (_device == null)
+        {
+            throw new InvalidOperationException("Graphics device is not initialized.");
+        }
+
         const string assetName = "Models/Test";
 
         _testObjModel = new(content, assetName);
+        _testObjModel!.SetDevice(_device);
     }
 }

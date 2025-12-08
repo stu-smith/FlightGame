@@ -23,7 +23,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
     private GraphicsDevice? _device;
     private ColoredTrianglesModel? _model;
-    private readonly BoundingBox _boundingBox;
+    private readonly BoundingSphere _boundingSphere;
 
     public LandscapeChunk(
         IReadOnlySparse2dArray<LandscapePoint> landscapeData,
@@ -46,12 +46,12 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         _worldMinZ = worldMinZ;
         _worldMaxZ = worldMaxZ;
 
-        // Pre-compute bounding box during construction
-        _boundingBox = ComputeBoundingBox();
+        // Pre-compute bounding sphere during construction
+        _boundingSphere = ComputeBoundingSphere();
     }
 
-    // Compute bounding box during construction
-    private BoundingBox ComputeBoundingBox()
+    // Compute bounding sphere during construction
+    private BoundingSphere ComputeBoundingSphere()
     {
         var minHeight = float.MaxValue;
         var maxHeight = float.MinValue;
@@ -83,10 +83,14 @@ public class LandscapeChunk : IOctreeItem, IRenderable
             maxHeight = 0f;
         }
 
-        return new BoundingBox(
-            new Vector3(_worldMinX, minHeight, _worldMinZ),
-            new Vector3(_worldMaxX, maxHeight, _worldMaxZ)
-        );
+        // Convert bounding box to bounding sphere
+        var min = new Vector3(_worldMinX, minHeight, _worldMinZ);
+        var max = new Vector3(_worldMaxX, maxHeight, _worldMaxZ);
+        var center = (min + max) * 0.5f;
+        var diagonal = max - min;
+        var radius = diagonal.Length() * 0.5f;
+
+        return new BoundingSphere(center, radius);
     }
 
     public static IReadOnlyList<LandscapeChunk> CreateChunksFromLandscape(LandscapeModel landscape)
@@ -205,6 +209,8 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         }
 
         _model = new ColoredTrianglesModel(triangles);
+
+        _model.SetDevice(device);
     }
 
     public int TriangleCount => _model?.TriangleCount ?? 0;
@@ -221,8 +227,8 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         model.Render(effect, renderContext);
     }
 
-    public BoundingBox GetBoundingBox()
+    public BoundingSphere GetBoundingSphere()
     {
-        return _boundingBox;
+        return _boundingSphere;
     }
 }

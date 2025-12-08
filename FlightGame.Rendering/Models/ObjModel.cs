@@ -240,8 +240,8 @@ public class ObjModel : IRenderable
         _model.SetDevice(device);
     }
 
-    public BoundingBox GetBoundingBox()
+    public BoundingSphere GetBoundingSphere()
     {
-        return _model.GetBoundingBox();
+        return _model.GetBoundingSphere();
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
 namespace FlightGame.Rendering.Core;
@@ -30,16 +30,16 @@ public class Octree<T> where T : IOctreeItem
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        var boundingBox = item.GetBoundingBox();
-        _root.Insert(item, boundingBox);
+        var boundingSphere = item.GetBoundingSphere();
+        _root.Insert(item, boundingSphere);
     }
 
     public void Remove(T item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        var boundingBox = item.GetBoundingBox();
-        _root.Remove(item, boundingBox);
+        var boundingSphere = item.GetBoundingSphere();
+        _root.Remove(item, boundingSphere);
     }
 
     public List<T> Query(BoundingBox bounds)
@@ -82,9 +82,9 @@ public class Octree<T> where T : IOctreeItem
         private readonly List<T> _items = [];
         private OctreeNode[]? _children;
 
-        public void Insert(T item, BoundingBox itemBounds)
+        public void Insert(T item, BoundingSphere itemSphere)
         {
-            if (!_bounds.Intersects(itemBounds))
+            if (!itemSphere.Intersects(_bounds))
             {
                 return;
             }
@@ -104,13 +104,13 @@ public class Octree<T> where T : IOctreeItem
 
             foreach (var child in _children!)
             {
-                child.Insert(item, itemBounds);
+                child.Insert(item, itemSphere);
             }
         }
 
-        public void Remove(T item, BoundingBox itemBounds)
+        public void Remove(T item, BoundingSphere itemSphere)
         {
-            if (!_bounds.Intersects(itemBounds))
+            if (!itemSphere.Intersects(_bounds))
             {
                 return;
             }
@@ -123,7 +123,7 @@ public class Octree<T> where T : IOctreeItem
             {
                 foreach (var child in _children)
                 {
-                    child.Remove(item, itemBounds);
+                    child.Remove(item, itemSphere);
                 }
 
                 TryMerge();
@@ -141,8 +141,8 @@ public class Octree<T> where T : IOctreeItem
             {
                 foreach (var item in _items)
                 {
-                    var itemBounds = item.GetBoundingBox();
-                    if (bounds.Intersects(itemBounds))
+                    var itemSphere = item.GetBoundingSphere();
+                    if (itemSphere.Intersects(bounds))
                     {
                         results.Add(item);
                     }
@@ -168,9 +168,9 @@ public class Octree<T> where T : IOctreeItem
             {
                 foreach (var item in _items)
                 {
-                    var itemBounds = item.GetBoundingBox();
+                    var itemSphere = item.GetBoundingSphere();
 
-                    if (itemBounds.Contains(point) == ContainmentType.Disjoint)
+                    if (itemSphere.Contains(point) != ContainmentType.Disjoint)
                     {
                         results.Add(item);
                     }
@@ -195,12 +195,12 @@ public class Octree<T> where T : IOctreeItem
 
             if (_children == null)
             {
-                // Leaf node: check each item's bounding box against the frustum
+                // Leaf node: check each item's bounding sphere against the frustum
                 foreach (var item in _items)
                 {
-                    var itemBounds = item.GetBoundingBox();
+                    var itemSphere = item.GetBoundingSphere();
 
-                    if (!frustum.Intersects(itemBounds))
+                    if (!frustum.Intersects(itemSphere))
                     {
                         continue;
                     }
@@ -310,10 +310,10 @@ public class Octree<T> where T : IOctreeItem
 
             foreach (var item in itemsToRedistribute)
             {
-                var itemBounds = item.GetBoundingBox();
+                var itemSphere = item.GetBoundingSphere();
                 foreach (var child in _children)
                 {
-                    child.Insert(item, itemBounds);
+                    child.Insert(item, itemSphere);
                 }
             }
         }

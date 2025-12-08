@@ -8,7 +8,7 @@ public class ColoredTrianglesModel : IRenderable
 {
     private readonly VertexPositionColorNormal[] _vertices = [];
     private readonly int[] _indices = [];
-    private readonly BoundingBox _boundingBox;
+    private readonly BoundingSphere _boundingSphere;
     private VertexBuffer? _vertexBuffer;
     private IndexBuffer? _indexBuffer;
 
@@ -102,7 +102,11 @@ public class ColoredTrianglesModel : IRenderable
             _indices[i * 3 + 2] = i * 3 + 2;
         }
 
-        _boundingBox = new BoundingBox(min, max);
+        // Convert bounding box to bounding sphere
+        var center = (min + max) * 0.5f;
+        var diagonal = max - min;
+        var radius = diagonal.Length() * 0.5f;
+        _boundingSphere = new BoundingSphere(center, radius);
     }
 
     private void UpdateBoundingBox(ref Vector3 min, ref Vector3 max, Vector3 position)
@@ -162,9 +166,9 @@ public class ColoredTrianglesModel : IRenderable
         _indexBuffer.SetData(_indices);
     }
 
-    public BoundingBox GetBoundingBox()
+    public BoundingSphere GetBoundingSphere()
     {
-        return _boundingBox;
+        return _boundingSphere;
     }
 
     private struct VertexPositionColorNormal

@@ -8,8 +8,9 @@ public class ColoredTrianglesModel : IRenderable
 {
     private readonly VertexPositionColorNormal[] _vertices = [];
     private readonly int[] _indices = [];
-    private readonly VertexBuffer _vertexBuffer;
-    private readonly IndexBuffer _indexBuffer;
+    private readonly BoundingBox _boundingBox;
+    private VertexBuffer? _vertexBuffer;
+    private IndexBuffer? _indexBuffer;
 
     public record class Triangle
     {
@@ -41,14 +42,15 @@ public class ColoredTrianglesModel : IRenderable
 
     public int TriangleCount { get; }
 
-    public ColoredTrianglesModel(GraphicsDevice graphicsDevice, IReadOnlyList<Triangle> triangles)
+    public ColoredTrianglesModel(IReadOnlyList<Triangle> triangles)
     {
-        ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(triangles);
 
         TriangleCount = triangles.Count;
         _vertices = new VertexPositionColorNormal[triangles.Count * 3];
 
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
         var index = 0;
 
         foreach (var t in triangles)
@@ -83,16 +85,12 @@ public class ColoredTrianglesModel : IRenderable
                 Color = t.Color3,
                 Normal = normal
             };
+
+            // Update bounding box
+            UpdateBoundingBox(ref min, ref max, t.Vertex1);
+            UpdateBoundingBox(ref min, ref max, t.Vertex2);
+            UpdateBoundingBox(ref min, ref max, t.Vertex3);
         }
-
-        // Populate vertex buffer
-        _vertexBuffer = new VertexBuffer(
-            graphicsDevice,
-            VertexPositionColorNormal.VertexDeclaration,
-            _vertices.Length,
-            BufferUsage.WriteOnly);
-
-        _vertexBuffer.SetData(_vertices);
 
         // Populate index buffer (one triangle per three sequential vertices)
         _indices = new int[triangles.Count * 3];
@@ -104,17 +102,26 @@ public class ColoredTrianglesModel : IRenderable
             _indices[i * 3 + 2] = i * 3 + 2;
         }
 
-        _indexBuffer = new IndexBuffer(
-            graphicsDevice,
-            IndexElementSize.ThirtyTwoBits,
-            _indices.Length,
-            BufferUsage.WriteOnly);
+        _boundingBox = new BoundingBox(min, max);
+    }
 
-        _indexBuffer.SetData(_indices);
+    private void UpdateBoundingBox(ref Vector3 min, ref Vector3 max, Vector3 position)
+    {
+        min.X = Math.Min(min.X, position.X);
+        min.Y = Math.Min(min.Y, position.Y);
+        min.Z = Math.Min(min.Z, position.Z);
+        max.X = Math.Max(max.X, position.X);
+        max.Y = Math.Max(max.Y, position.Y);
+        max.Z = Math.Max(max.Z, position.Z);
     }
 
     public void Render(Effect effect, RenderContext renderContext)
     {
+        if(_vertexBuffer == null || _indexBuffer == null)
+        {
+            throw new InvalidOperationException("Graphics device not set. Call SetDevice() before rendering.");
+        }
+
         var graphicsDevice = _vertexBuffer.GraphicsDevice;
 
         foreach (var pass in effect.CurrentTechnique.Passes)
@@ -132,12 +139,32 @@ public class ColoredTrianglesModel : IRenderable
 
     public void SetDevice(GraphicsDevice device)
     {
-        throw new NotImplementedException();
+        if(_vertexBuffer != null)
+        {
+            return;
+        }
+
+        // Populate vertex buffer
+        _vertexBuffer = new VertexBuffer(
+            device,
+            VertexPositionColorNormal.VertexDeclaration,
+            _vertices.Length,
+            BufferUsage.WriteOnly);
+
+        _vertexBuffer.SetData(_vertices);
+
+        _indexBuffer = new IndexBuffer(
+            device,
+            IndexElementSize.ThirtyTwoBits,
+            _indices.Length,
+            BufferUsage.WriteOnly);
+
+        _indexBuffer.SetData(_indices);
     }
 
     public BoundingBox GetBoundingBox()
     {
-        throw new NotImplementedException();
+        return _boundingBox;
     }
 
     private struct VertexPositionColorNormal

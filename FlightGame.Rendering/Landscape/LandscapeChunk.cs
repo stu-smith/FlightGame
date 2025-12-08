@@ -204,7 +204,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
             }
         }
 
-        _model = new ColoredTrianglesModel(device, triangles);
+        _model = new ColoredTrianglesModel(triangles);
     }
 
     public int TriangleCount => _model?.TriangleCount ?? 0;

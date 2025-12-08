@@ -117,13 +117,8 @@ public class World : IRenderable
 
     public void LoadContent(ContentManager content)
     {
-        if(_device == null)
-        {
-            throw new InvalidOperationException("Graphics device is not initialized.");
-        }
-
         const string assetName = "Models/Test";
 
-        _testObjModel = new(_device, content, assetName);
+        _testObjModel = new(content, assetName);
     }
 }

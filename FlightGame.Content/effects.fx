@@ -107,6 +107,56 @@ technique Colored
 	}
 }
 
+//------- Technique: ColoredInstanced --------
+
+VertexToPixel ColoredInstancedVS( 
+	float4 inPos : POSITION, 
+	float3 inNormal: NORMAL, 
+	float4 inColor: COLOR,
+	float4 instanceWorld0 : TEXCOORD1,
+	float4 instanceWorld1 : TEXCOORD2,
+	float4 instanceWorld2 : TEXCOORD3,
+	float4 instanceWorld3 : TEXCOORD4)
+{	
+	VertexToPixel Output = (VertexToPixel)0;
+	
+	// Reconstruct world matrix from instance data
+	float4x4 instanceWorld = float4x4(
+		instanceWorld0,
+		instanceWorld1,
+		instanceWorld2,
+		instanceWorld3
+	);
+	
+	float4x4 preViewProjection = mul (xView, xProjection);
+	float4x4 preWorldViewProjection = mul (instanceWorld, preViewProjection);
+    
+	Output.Position = mul(inPos, preWorldViewProjection);
+	Output.Color = inColor;
+	
+	float3 Normal = normalize(mul(normalize(inNormal), (float3x3)instanceWorld));	
+	Output.LightingFactor = 1;
+	if (xEnableLighting)
+		Output.LightingFactor = dot(Normal, -xLightDirection);
+    
+	return Output;    
+}
+
+technique ColoredInstanced
+{
+	pass Pass0
+	{   
+#if SM4
+		VertexShader = compile vs_4_0_level_9_3 ColoredInstancedVS();
+		PixelShader  = compile ps_4_0_level_9_3 ColoredPS();
+#else
+		// Instancing requires SM4, fall back to regular rendering
+		VertexShader = compile vs_1_1 ColoredVS();
+		PixelShader  = compile ps_2_0 ColoredPS();
+#endif				
+	}
+}
+
 //------- Technique: ColoredNoShading --------
 
 VertexToPixel ColoredNoShadingVS( float4 inPos : POSITION, float4 inColor: COLOR)

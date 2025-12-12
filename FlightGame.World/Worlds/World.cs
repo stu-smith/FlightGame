@@ -99,10 +99,22 @@ public class World : IRenderable
             item.Render(effect, renderContext);
         }
 
-        var moveMatrix = Matrix.CreateTranslation(60f, 800f, -900f);
+        var matrices = new List<Matrix>();
 
-        effect.Parameters["xWorld"].SetValue(moveMatrix);
-        _testObjModel!.Render(effect, renderContext);
+        for(var x = -1000; x <= 1000; x += 50)
+        {
+            for(var z = -1000; z <= 1000; z += 50)
+            {
+                var translation = Matrix.CreateTranslation(x, 800f, z);
+                matrices.Add(translation);
+            }
+        }
+
+        _testObjModel!.RenderInstanced(effect, renderContext, matrices);
+
+        //var moveMatrix = Matrix.CreateTranslation(60f, 800f, -900f);
+        //effect.Parameters["xWorld"].SetValue(moveMatrix);
+        //_testObjModel!.Render(effect, renderContext);
     }
 
     public BoundingSphere GetBoundingSphere()

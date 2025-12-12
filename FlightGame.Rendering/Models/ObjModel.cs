@@ -9,7 +9,7 @@ namespace FlightGame.Rendering.Models;
 /// <summary>
 /// A 3D model loaded from an OBJ file, implementing IRenderable.
 /// </summary>
-public class ObjModel : IRenderable
+public class ObjModel : IRenderable, IMultiInstanceRenderer
 {
     private readonly ColoredTrianglesModel _model;
 
@@ -233,6 +233,11 @@ public class ObjModel : IRenderable
     public void Render(Effect effect, RenderContext renderContext)
     {
         _model.Render(effect, renderContext);
+    }
+
+    public void RenderInstanced(Effect effect, RenderContext renderContext, IReadOnlyList<Matrix> worldMatrices)
+    {
+        _model.RenderInstanced(effect, renderContext, worldMatrices);
     }
 
     public void SetDevice(GraphicsDevice device)

@@ -181,7 +181,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
                 colorTL ??= Color.Pink;
                 colorTR ??= Color.Pink;
 
-                if ((x + z % 2) == 0)
+                if ((x % 2) == 0 ^ (z % 2) == 0)
                 {
                     // First triangle: topLeft, lowerRight, lowerLeft
                     triangles.Add(new ColoredTrianglesModel.Triangle(
@@ -230,5 +230,52 @@ public class LandscapeChunk : IOctreeItem, IRenderable
     public BoundingSphere GetBoundingSphere()
     {
         return _boundingSphere;
+    }
+
+    /// <summary>
+    /// Gets the height at the given world coordinates (x, z).
+    /// </summary>
+    /// <param name="x">World X coordinate</param>
+    /// <param name="z">World Z coordinate</param>
+    /// <returns>The height at the given position, or null if the coordinates are out of bounds or no data exists at that position.</returns>
+    public float? GetHeight(float x, float z)
+    {
+        // Check if coordinates are within world bounds
+        if (x < _worldMinX || x > _worldMaxX || z < _worldMinZ || z > _worldMaxZ)
+        {
+            return null;
+        }
+
+        // Convert world coordinates to data coordinates
+        int dataX;
+        int dataZ;
+
+        if (_dataMaxX == _dataMinX)
+        {
+            dataX = _dataMinX;
+        }
+        else
+        {
+            var normalizedX = (x - _worldMinX) / (_worldMaxX - _worldMinX);
+            dataX = _dataMinX + (int)Math.Round(normalizedX * (_dataMaxX - _dataMinX));
+            // Clamp to ensure we're within bounds (handles floating point precision issues)
+            dataX = Math.Clamp(dataX, _dataMinX, _dataMaxX);
+        }
+
+        if (_dataMaxZ == _dataMinZ)
+        {
+            dataZ = _dataMinZ;
+        }
+        else
+        {
+            var normalizedZ = (z - _worldMinZ) / (_worldMaxZ - _worldMinZ);
+            dataZ = _dataMinZ + (int)Math.Round(normalizedZ * (_dataMaxZ - _dataMinZ));
+            // Clamp to ensure we're within bounds (handles floating point precision issues)
+            dataZ = Math.Clamp(dataZ, _dataMinZ, _dataMaxZ);
+        }
+
+        // Get the point from the landscape data
+        var point = _landscapeData[dataX, dataZ];
+        return point?.Height;
     }
 }

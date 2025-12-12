@@ -4,13 +4,15 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace FlightGame.Rendering.Models;
 
-public class ColoredTrianglesModel : IRenderable
+public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
 {
     private readonly VertexPositionColorNormal[] _vertices = [];
     private readonly int[] _indices = [];
     private readonly BoundingSphere _boundingSphere;
     private VertexBuffer? _vertexBuffer;
     private IndexBuffer? _indexBuffer;
+    private VertexBuffer? _instanceBuffer;
+    private int _instanceCount;
 
     public record class Triangle
     {
@@ -106,10 +108,11 @@ public class ColoredTrianglesModel : IRenderable
         var center = (min + max) * 0.5f;
         var diagonal = max - min;
         var radius = diagonal.Length() * 0.5f;
+
         _boundingSphere = new BoundingSphere(center, radius);
     }
 
-    private void UpdateBoundingBox(ref Vector3 min, ref Vector3 max, Vector3 position)
+    private static void UpdateBoundingBox(ref Vector3 min, ref Vector3 max, Vector3 position)
     {
         min.X = Math.Min(min.X, position.X);
         min.Y = Math.Min(min.Y, position.Y);
@@ -121,7 +124,7 @@ public class ColoredTrianglesModel : IRenderable
 
     public void Render(Effect effect, RenderContext renderContext)
     {
-        if(_vertexBuffer == null || _indexBuffer == null)
+        if (_vertexBuffer == null || _indexBuffer == null)
         {
             throw new InvalidOperationException("Graphics device not set. Call SetDevice() before rendering.");
         }
@@ -141,9 +144,91 @@ public class ColoredTrianglesModel : IRenderable
         }
     }
 
+    /// <summary>
+    /// Renders multiple instances of this model at different positions and rotations using hardware instancing.
+    /// </summary>
+    /// <param name="effect">The effect to use for rendering.</param>
+    /// <param name="renderContext">The render context.</param>
+    /// <param name="worldMatrices">Array of world transformation matrices, one per instance.</param>
+    public void RenderInstanced(Effect effect, RenderContext renderContext, IReadOnlyList<Matrix> worldMatrices)
+    {
+        if (worldMatrices == null || worldMatrices.Count == 0)
+        {
+            return;
+        }
+
+        if (_vertexBuffer == null || _indexBuffer == null)
+        {
+            throw new InvalidOperationException("Graphics device not set. Call SetDevice() before rendering.");
+        }
+
+        var graphicsDevice = _vertexBuffer.GraphicsDevice;
+
+        // Update instance buffer if needed
+        if (_instanceBuffer == null || _instanceCount != worldMatrices.Count)
+        {
+            _instanceCount = worldMatrices.Count;
+
+            // Create or recreate instance buffer
+            _instanceBuffer?.Dispose();
+            _instanceBuffer = new VertexBuffer(
+                graphicsDevice,
+                InstanceWorldMatrix.VertexDeclaration,
+                worldMatrices.Count,
+                BufferUsage.WriteOnly);
+        }
+
+        // Convert matrices to instance data format
+        var instanceData = new InstanceWorldMatrix[worldMatrices.Count];
+
+        for (var i = 0; i < worldMatrices.Count; i++)
+        {
+            instanceData[i] = new InstanceWorldMatrix { World = worldMatrices[i] };
+        }
+
+        _instanceBuffer.SetData(instanceData);
+
+        // Store original technique
+        var originalTechnique = effect.CurrentTechnique;
+
+        // Use instanced technique if available, otherwise fall back to regular rendering
+        var instancedTechnique = effect.Techniques["ColoredInstanced"];
+        if (instancedTechnique != null)
+        {
+            effect.CurrentTechnique = instancedTechnique;
+        }
+
+        foreach (var pass in effect.CurrentTechnique.Passes)
+        {
+            pass.Apply();
+
+            graphicsDevice.Indices = _indexBuffer;
+
+            // Set both vertex buffers (base geometry and instance data)
+            // The instance buffer has instanceFrequency = 1 to indicate instancing
+            // MonoGame will automatically combine the vertex declarations from both buffers
+            graphicsDevice.SetVertexBuffers(
+                new VertexBufferBinding(_vertexBuffer, 0, 0),
+                new VertexBufferBinding(_instanceBuffer, 0, 1));
+
+            // Use instanced rendering
+            graphicsDevice.DrawInstancedPrimitives(
+                PrimitiveType.TriangleList,
+                0,
+                0,
+                _indices.Length / 3,
+                worldMatrices.Count);
+
+            renderContext.PerformanceCounter.AddTriangles((_indices.Length / 3) * worldMatrices.Count);
+        }
+
+        // Restore original technique
+        effect.CurrentTechnique = originalTechnique;
+    }
+
     public void SetDevice(GraphicsDevice device)
     {
-        if(_vertexBuffer != null)
+        if (_vertexBuffer != null)
         {
             return;
         }
@@ -182,6 +267,18 @@ public class ColoredTrianglesModel : IRenderable
             new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
             new VertexElement(sizeof(float) * 3, VertexElementFormat.Color, VertexElementUsage.Color, 0),
             new VertexElement(sizeof(float) * 3 + 4, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0)
+        );
+    }
+
+    private struct InstanceWorldMatrix
+    {
+        public Matrix World;
+
+        public static readonly VertexDeclaration VertexDeclaration = new(
+            new VertexElement(0, VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1), // Row 0
+            new VertexElement(16, VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 2), // Row 1
+            new VertexElement(32, VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 3), // Row 2
+            new VertexElement(48, VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 4)  // Row 3
         );
     }
 }

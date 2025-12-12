@@ -26,6 +26,13 @@ public class Octree<T> where T : IOctreeItem
         _root = new OctreeNode(bounds, 0);
     }
 
+    public Octree(BoundingBox bounds)
+    {
+        _root = new OctreeNode(bounds, 0);
+    }
+
+    public BoundingBox BoundingBox => _root.Bounds;
+
     public void Insert(T item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -81,6 +88,8 @@ public class Octree<T> where T : IOctreeItem
         private readonly int _depth = depth;
         private readonly List<T> _items = [];
         private OctreeNode[]? _children;
+
+        public BoundingBox Bounds => _bounds;
 
         public void Insert(T item, BoundingSphere itemSphere)
         {

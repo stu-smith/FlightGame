@@ -96,6 +96,8 @@ public class Game : Microsoft.Xna.Framework.Game
 
         _performanceCounter?.Update(gameTime);
 
+        _world.Update(gameTime);
+
         base.Update(gameTime);
     }
 

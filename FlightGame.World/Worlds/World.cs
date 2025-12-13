@@ -4,6 +4,7 @@ using FlightGame.Rendering;
 using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Landscape;
 using FlightGame.Rendering.Models;
+using FlightGame.Rendering.Water;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -18,6 +19,7 @@ public class World : IRenderable
     private readonly Octree<IRenderable> _octree = new(_worldSize);
 
     private ObjModel? _testObjModel;
+    private readonly WaterRendererType2 _waterRenderer = new();
 
     public World()
     {
@@ -78,6 +80,13 @@ public class World : IRenderable
         {
             item.SetDevice(device);
         }
+
+        _waterRenderer.SetDevice(device);
+    }
+
+    public void Update(GameTime gameTime)
+    {
+        _waterRenderer.Update(gameTime);
     }
 
     public void Render(Effect effect, RenderContext renderContext)
@@ -98,6 +107,9 @@ public class World : IRenderable
         {
             item.Render(effect, renderContext);
         }
+
+        // Render water surface
+        _waterRenderer.Render(effect, renderContext);
 
         var matrices = new List<Matrix>();
 

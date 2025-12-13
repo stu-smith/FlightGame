@@ -23,6 +23,7 @@ bool xShowNormals;
 float3 xCamPos;
 float3 xCamUp;
 float xPointSpriteSize;
+float xTime;
 
 //------- Texture Samplers --------
 
@@ -321,5 +322,239 @@ technique PointSprites
 		VertexShader = compile vs_1_1 PointSpriteVS();
 		PixelShader  = compile ps_2_0 PointSpritePS();
 #endif
+	}
+}
+
+//------- Technique: Water --------
+
+VertexToPixel WaterVS( float4 inPos : POSITION, float3 inNormal: NORMAL, float4 inColor: COLOR)
+{	
+	VertexToPixel Output = (VertexToPixel)0;
+	
+	// Create animated wave distortion for cartoony water effect
+	float3 pos = inPos.xyz;
+	
+	// Multiple wave layers for more interesting movement
+	float wave1 = sin(pos.x * 0.02 + xTime * 0.5) * cos(pos.z * 0.02 + xTime * 0.3) * 2.0;
+	float wave2 = sin(pos.x * 0.05 + pos.z * 0.05 + xTime * 0.7) * 1.5;
+	float wave3 = cos(pos.x * 0.01 - pos.z * 0.01 + xTime * 0.4) * 1.0;
+	
+	// Combine waves for smooth, cartoony animation
+	pos.y += wave1 + wave2 + wave3;
+	
+	// Transform position
+	float4x4 preViewProjection = mul (xView, xProjection);
+	float4x4 preWorldViewProjection = mul (xWorld, preViewProjection);
+    
+	Output.Position = mul(float4(pos, 1.0), preWorldViewProjection);
+	
+	// Pass through color with slight variation based on wave height
+	float waveIntensity = (wave1 + wave2 + wave3) * 0.1 + 0.5;
+	Output.Color = inColor;
+	Output.Color.rgb *= waveIntensity;
+	
+	// Calculate normal for lighting (slightly perturbed by waves)
+	float3 Normal = normalize(mul(normalize(inNormal), (float3x3)xWorld));
+	Output.LightingFactor = 1;
+	if (xEnableLighting)
+		Output.LightingFactor = dot(Normal, -xLightDirection);
+    
+	return Output;    
+}
+
+PixelToFrame WaterPS(VertexToPixel PSIn) 
+{
+	PixelToFrame Output = (PixelToFrame)0;		
+    
+	// Cartoony water effect: bright, saturated blue with enhanced lighting
+	float4 baseColor = PSIn.Color;
+	
+	// Enhance the color saturation for cartoony look
+	float3 color = baseColor.rgb;
+	color = lerp(color, color * 1.3, 0.3); // Boost saturation
+	
+	// Add fresnel-like effect for stylized water edge
+	float fresnel = saturate(PSIn.LightingFactor * 0.5 + 0.5);
+	fresnel = pow(fresnel, 1.5); // Sharper transition for cartoony look
+	
+	// Mix between base color and lighter color based on fresnel
+	float3 finalColor = lerp(color, color * 1.5, fresnel);
+	
+	Output.Color = float4(finalColor, baseColor.a);
+	
+	// Apply lighting with enhanced contrast for cartoony style
+	Output.Color.rgb *= saturate(PSIn.LightingFactor * 1.2) + xAmbient * 0.8;
+	
+	return Output;
+}
+
+technique Water
+{
+	pass Pass0
+	{   
+#if SM4
+		VertexShader = compile vs_4_0_level_9_3 WaterVS();
+		PixelShader  = compile ps_4_0_level_9_3 WaterPS();
+#else
+		VertexShader = compile vs_1_1 WaterVS();
+		PixelShader  = compile ps_2_0 WaterPS();
+#endif				
+	}
+}
+
+//------- Technique: Water2 (Shader-based waves on simple rectangle) --------
+
+VertexToPixel Water2VS( float4 inPos : POSITION, float3 inNormal: NORMAL, float4 inColor: COLOR, float2 inTexCoords: TEXCOORD0)
+{	
+	VertexToPixel Output = (VertexToPixel)0;
+	
+	// Transform position normally (no vertex displacement - all done in pixel shader)
+	float4x4 preViewProjection = mul (xView, xProjection);
+	float4x4 preWorldViewProjection = mul (xWorld, preViewProjection);
+    
+	Output.Position = mul(inPos, preWorldViewProjection);
+	
+	// Pass through color
+	Output.Color = inColor;
+	
+	// Pass through texture coordinates (we'll use these to calculate world position in pixel shader)
+	Output.TextureCoords = inTexCoords;
+	
+	// Calculate normal for lighting
+	float3 Normal = normalize(mul(normalize(inNormal), (float3x3)xWorld));	
+	Output.LightingFactor = 1;
+	if (xEnableLighting)
+		Output.LightingFactor = dot(Normal, -xLightDirection);
+    
+	return Output;    
+}
+
+PixelToFrame Water2PS(VertexToPixel PSIn) 
+{
+	PixelToFrame Output = (PixelToFrame)0;		
+    
+	// Reconstruct world position from texture coordinates
+	float waterSize = 20000.0;
+	float2 worldPos = (PSIn.TextureCoords - 0.5) * waterSize;
+	float worldX = worldPos.x;
+	float worldZ = worldPos.y;
+	
+	// ===== ANIMATED SURFACE NORMALS =====
+	// Create detailed normal patterns for realistic surface variation
+	// Multiple octaves of noise for detailed surface
+	float2 uv1 = float2(worldX, worldZ) * 0.01 + float2(xTime * 0.3, xTime * 0.2);
+	float2 uv2 = float2(worldX, worldZ) * 0.025 + float2(xTime * 0.5, -xTime * 0.3);
+	float2 uv3 = float2(worldX, worldZ) * 0.05 + float2(-xTime * 0.2, xTime * 0.4);
+	
+	// Sample wave patterns for normal calculation
+	float waveN1 = sin(uv1.x + uv1.y) * cos(uv1.x - uv1.y);
+	float waveN2 = sin(uv2.x * 2.0 + uv2.y) * 0.5;
+	float waveN3 = cos(uv3.x + uv3.y * 2.0) * 0.25;
+	
+	// Calculate normal derivatives for surface detail
+	float ddx = waveN1 + waveN2 + waveN3;
+	float ddz = cos(uv1.x + uv1.y) * sin(uv1.x - uv1.y) + 
+	            cos(uv2.x * 2.0 + uv2.y) * 0.5 + 
+	            sin(uv3.x + uv3.y * 2.0) * 0.25;
+	
+	// Create perturbed normal (for refraction effect)
+	float3 surfaceNormal = normalize(float3(-ddx * 0.1, 1.0, -ddz * 0.1));
+	
+	// ===== WAVE HEIGHT CALCULATION =====
+	// Calculate wave height for depth simulation
+	float wave1 = sin(worldX * 0.02 + xTime * 0.5) * cos(worldZ * 0.02 + xTime * 0.3) * 2.0;
+	float wave2 = sin(worldX * 0.05 + worldZ * 0.05 + xTime * 0.7) * 1.5;
+	float wave3 = cos(worldX * 0.01 - worldZ * 0.01 + xTime * 0.4) * 1.0;
+	float totalWave = wave1 + wave2 + wave3;
+	
+	// ===== DEPTH-BASED COLOR ABSORPTION =====
+	// Simulate depth using wave variation and distance from center
+	float simulatedDepth = abs(totalWave) * 0.5 + 0.5; // Normalize to 0-1
+	float distanceFromCenter = length(worldPos) / (waterSize * 0.5); // 0 at center, 1 at edge
+	simulatedDepth = lerp(simulatedDepth, 0.3, saturate(distanceFromCenter * 0.5)); // Deeper at edges
+	
+	// Absorption color (inverse of water color) - from article technique
+	float3 waterColor = float3(0.39, 0.59, 1.0); // Base water blue (100, 150, 255 normalized)
+	float3 absorptionColor = float3(1.0, 1.0, 1.0) - waterColor; // Orange/red absorption
+	
+	// Calculate absorption value using exponential falloff (as in article)
+	float absorptionStrength = 0.8;
+	float absorptionVal = 1.0 - exp2(-absorptionStrength * simulatedDepth * 5.0);
+	float3 subtractiveColor = absorptionColor * absorptionVal;
+	
+	// Base underwater color (would normally sample from scene, but we'll use a tinted version)
+	float3 baseColor = PSIn.Color.rgb;
+	float3 underwaterColor = baseColor - subtractiveColor;
+	underwaterColor = max(underwaterColor, float3(0.0, 0.0, 0.0)); // Clamp to avoid negatives
+	
+	// ===== REFRACTION EFFECT =====
+	// Use surface normal to offset UVs for refraction-like effect
+	float2 refractedUV = PSIn.TextureCoords + surfaceNormal.xz * 0.02;
+	
+	// ===== CAUSTICS =====
+	// Light patterns projected onto underwater geometry (from article)
+	float2 causticUV = float2(worldX, worldZ) * 0.005 + float2(xTime * 0.4, xTime * 0.3);
+	float caustic1 = sin(causticUV.x * 3.0) * cos(causticUV.y * 3.0);
+	float caustic2 = sin(causticUV.x * 5.0 + causticUV.y * 2.0 + xTime * 0.5) * 0.5;
+	float causticPattern = saturate(caustic1 + caustic2);
+	causticPattern = pow(causticPattern, 2.0); // Sharper caustics
+	
+	// Apply caustics to underwater color (multiply by light color)
+	float3 lightColor = float3(1.0, 0.95, 0.9); // Warm sunlight
+	underwaterColor += lightColor * causticPattern * 0.3 * (1.0 - simulatedDepth);
+	
+	// ===== DEPTH FOAM =====
+	// Foam at shallow areas (from article technique)
+	float foamDepth = 1.0 - simulatedDepth;
+	float foamNoise = sin(worldX * 0.1 + xTime * 0.8) * cos(worldZ * 0.1 - xTime * 0.6);
+	foamNoise = foamNoise * 0.5 + 0.5; // Normalize to 0-1
+	float foamThreshold = 0.3;
+	float foamMask = step(foamThreshold, foamDepth + foamNoise * 0.2);
+	foamMask = max(foamMask, step(0.25, foamDepth)); // Additional threshold
+	
+	// Foam color (white/light blue)
+	float3 foamColor = float3(0.9, 0.95, 1.0);
+	
+	// ===== FRESNEL EFFECT =====
+	// More realistic fresnel based on viewing angle
+	float3 viewDir = normalize(xCamPos - float3(worldX, 0, worldZ));
+	float fresnel = 1.0 - saturate(dot(surfaceNormal, viewDir));
+	fresnel = pow(fresnel, 2.0);
+	
+	// ===== COMBINE ALL EFFECTS =====
+	// Mix surface color (reflective) with underwater color (refractive)
+	float3 surfaceColor = lerp(waterColor, waterColor * 1.5, fresnel);
+	
+	// Apply specular highlights based on surface normals
+	float3 lightDir = normalize(-xLightDirection);
+	float specular = pow(saturate(dot(reflect(-lightDir, surfaceNormal), viewDir)), 32.0);
+	surfaceColor += float3(1.0, 1.0, 1.0) * specular * 0.5;
+	
+	// Combine surface and underwater colors based on transparency
+	float transparency = 0.7;
+	float3 finalColor = lerp(underwaterColor, surfaceColor, transparency + fresnel * 0.3);
+	
+	// Apply foam
+	finalColor = lerp(finalColor, foamColor, foamMask * 0.8);
+	
+	// Apply lighting
+	finalColor *= saturate(PSIn.LightingFactor) + xAmbient;
+	
+	Output.Color = float4(finalColor, PSIn.Color.a);
+	
+	return Output;
+}
+
+technique Water2
+{
+	pass Pass0
+	{   
+#if SM4
+		VertexShader = compile vs_4_0_level_9_3 Water2VS();
+		PixelShader  = compile ps_4_0_level_9_3 Water2PS();
+#else
+		VertexShader = compile vs_1_1 Water2VS();
+		PixelShader  = compile ps_2_0 Water2PS();
+#endif				
 	}
 }

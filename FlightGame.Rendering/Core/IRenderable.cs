@@ -6,5 +6,5 @@ public interface IRenderable : IOctreeItem
 {
     void SetDevice(GraphicsDevice device);
 
-    void Render(Effect effect, RenderContext renderContext);
+    void Render(RenderContext renderContext);
 }

@@ -20,7 +20,7 @@ public class ObjModel : IRenderable, IMultiInstanceRenderer
     /// </summary>
     /// <param name="contentManager">The ContentManager to use for loading.</param>
     /// <param name="assetName">The asset name (without extension) of the OBJ file in the content pipeline.</param>
-    public ObjModel(ContentManager contentManager, string assetName)
+    public ObjModel(string effectTechniqueName, ContentManager contentManager, string assetName)
     {
         ArgumentNullException.ThrowIfNull(contentManager);
         ArgumentNullException.ThrowIfNull(assetName);
@@ -30,13 +30,13 @@ public class ObjModel : IRenderable, IMultiInstanceRenderer
 
         // Build triangles from OBJ data
         var triangles = BuildTriangles(objData, materials);
-        _model = new ColoredTrianglesModel(triangles);
+        _model = new ColoredTrianglesModel(effectTechniqueName, triangles);
     }
 
     /// <summary>
     /// Creates an ObjModel from an OBJ file path.
     /// </summary>
-    public ObjModel(string objFilePath)
+    public ObjModel(string effectTechniqueName, string objFilePath)
     {
         ArgumentNullException.ThrowIfNull(objFilePath);
 
@@ -45,13 +45,14 @@ public class ObjModel : IRenderable, IMultiInstanceRenderer
 
         // Build triangles from OBJ data
         var triangles = BuildTriangles(objData, materials);
-        _model = new ColoredTrianglesModel(triangles);
+        _model = new ColoredTrianglesModel(effectTechniqueName, triangles);
     }
 
     /// <summary>
     /// Creates an ObjModel from OBJ model data (for programmatic creation).
     /// </summary>
     public ObjModel(
+        string effectTechniqueName,
         ObjImporter.ObjModelData objData,
         Dictionary<string, MtlImporter.MtlMaterial>? materials = null)
     {
@@ -61,7 +62,7 @@ public class ObjModel : IRenderable, IMultiInstanceRenderer
 
         // Build triangles from OBJ data
         var triangles = BuildTriangles(objData, materials);
-        _model = new ColoredTrianglesModel(triangles);
+        _model = new ColoredTrianglesModel(effectTechniqueName, triangles);
     }
 
     private static Dictionary<string, MtlImporter.MtlMaterial> LoadMaterials(
@@ -230,14 +231,14 @@ public class ObjModel : IRenderable, IMultiInstanceRenderer
         return new Color(r, g, b);
     }
 
-    public void Render(Effect effect, RenderContext renderContext)
+    public void Render(RenderContext renderContext)
     {
-        _model.Render(effect, renderContext);
+        _model.Render(renderContext);
     }
 
-    public void RenderInstanced(Effect effect, RenderContext renderContext, IReadOnlyList<Matrix> worldMatrices)
+    public void RenderInstanced(RenderContext renderContext, IReadOnlyList<Matrix> worldMatrices)
     {
-        _model.RenderInstanced(effect, renderContext, worldMatrices);
+        _model.RenderInstanced(renderContext, worldMatrices);
     }
 
     public void SetDevice(GraphicsDevice device)

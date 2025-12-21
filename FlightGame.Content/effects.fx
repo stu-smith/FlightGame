@@ -446,26 +446,83 @@ PixelToFrame Water2PS(VertexToPixel PSIn)
 	float2 uv2 = float2(worldX, worldZ) * 0.025 + float2(xTime * 0.5, -xTime * 0.3);
 	float2 uv3 = float2(worldX, worldZ) * 0.05 + float2(-xTime * 0.2, xTime * 0.4);
 	
-	// Sample wave patterns for normal calculation
+	// Sample wave patterns for normal calculation (large-scale waves)
 	float waveN1 = sin(uv1.x + uv1.y) * cos(uv1.x - uv1.y);
 	float waveN2 = sin(uv2.x * 2.0 + uv2.y) * 0.5;
 	float waveN3 = cos(uv3.x + uv3.y * 2.0) * 0.25;
 	
-	// Calculate normal derivatives for surface detail
-	float ddx = waveN1 + waveN2 + waveN3;
+	// ===== SMALL-SCALE WAVES (visible when camera is close) =====
+	// Calculate distance from camera to water surface point
+	// Water height is 20.0 (from WaterRendererType2)
+	float waterHeight = 20.0;
+	float3 waterWorldPos = float3(worldX, waterHeight, worldZ);
+	float3 camToWater = waterWorldPos - xCamPos;
+	float cameraDistance = length(camToWater);
+	
+	// Scale factor: more detail when camera is close (inverse distance with better curve)
+	// More aggressive scaling - detail is strong when within 500 units, fades out beyond
+	float detailScale = 1.0 - saturate((cameraDistance - 100.0) / 500.0);
+	detailScale = pow(detailScale, 0.5); // Less aggressive falloff for more visible effect
+	detailScale = max(detailScale, 0.4); // Always show significant small detail
+	
+	// High-frequency wave patterns for small-scale detail - HIGHER FREQUENCIES (less stretched)
+	// Increased frequencies to make waves tighter and less stretched
+	float2 uv4 = float2(worldX, worldZ) * 0.4 + float2(xTime * 1.2, xTime * 0.9);
+	float2 uv5 = float2(worldX, worldZ) * 0.8 + float2(xTime * 1.8, -xTime * 1.1);
+	float2 uv6 = float2(worldX, worldZ) * 1.5 + float2(-xTime * 0.7, xTime * 1.5);
+	float2 uv7 = float2(worldX, worldZ) * 2.5 + float2(xTime * 2.0, xTime * 1.3); // Even higher frequency
+	
+	// Small-scale wave patterns with varying frequencies - MUCH MORE PRONOUNCED
+	float waveN4 = sin(uv4.x * 2.0 + uv4.y * 1.8) * cos(uv4.x * 1.5 - uv4.y * 1.3) * 0.8;
+	float waveN5 = sin(uv5.x * 3.0 + uv5.y * 2.2) * 0.6;
+	float waveN6 = cos(uv6.x * 4.0 + uv6.y * 3.0 + xTime * 0.5) * 0.4;
+	float waveN7 = sin(uv7.x * 5.0 + uv7.y * 4.0 + xTime * 0.8) * 0.3; // Additional high-frequency detail
+	
+	// Scale small waves by camera distance - MUCH STRONGER
+	float smallWaveX = (waveN4 + waveN5 + waveN6 + waveN7) * detailScale * 1.5; // 1.5x multiplier
+	float smallWaveZ = (cos(uv4.x * 2.0 + uv4.y * 1.8) * sin(uv4.x * 1.5 - uv4.y * 1.3) * 0.8 +
+	                    cos(uv5.x * 3.0 + uv5.y * 2.2) * 0.6 +
+	                    sin(uv6.x * 4.0 + uv6.y * 3.0 + xTime * 0.5) * 0.4 +
+	                    cos(uv7.x * 5.0 + uv7.y * 4.0 + xTime * 0.8) * 0.3) * detailScale * 1.5;
+	
+	// Combine large-scale and small-scale waves
+	float ddx = waveN1 + waveN2 + waveN3 + smallWaveX;
 	float ddz = cos(uv1.x + uv1.y) * sin(uv1.x - uv1.y) + 
 	            cos(uv2.x * 2.0 + uv2.y) * 0.5 + 
-	            sin(uv3.x + uv3.y * 2.0) * 0.25;
+	            sin(uv3.x + uv3.y * 2.0) * 0.25 +
+	            smallWaveZ;
+	
+	// ===== BUMP MAPPING FOR HIGHLIGHTS =====
+	// Create additional high-frequency normal detail specifically for specular highlights
+	float2 bumpUV = float2(worldX, worldZ) * 1.2 + float2(xTime * 1.5, xTime * 1.2);
+	float bumpX = sin(bumpUV.x * 6.0 + bumpUV.y * 4.0) * cos(bumpUV.x * 5.0 - bumpUV.y * 3.0);
+	float bumpZ = cos(bumpUV.x * 6.0 + bumpUV.y * 4.0) * sin(bumpUV.x * 5.0 - bumpUV.y * 3.0);
+	
+	// Bump mapping detail (stronger when close)
+	float bumpStrength = detailScale * 0.4;
+	float3 bumpNormal = normalize(float3(-bumpX * bumpStrength, 1.0, -bumpZ * bumpStrength));
 	
 	// Create perturbed normal (for refraction effect)
-	float3 surfaceNormal = normalize(float3(-ddx * 0.1, 1.0, -ddz * 0.1));
+	// Small waves contribute more when camera is close - INCREASED STRENGTH
+	float normalStrength = 0.15 + detailScale * 0.5; // Much stronger normal perturbation when close
+	float3 surfaceNormal = normalize(float3(-ddx * normalStrength, 1.0, -ddz * normalStrength));
+	
+	// Combine surface normal with bump mapping for more pronounced detail
+	surfaceNormal = normalize(surfaceNormal + bumpNormal * 0.3);
 	
 	// ===== WAVE HEIGHT CALCULATION =====
 	// Calculate wave height for depth simulation
 	float wave1 = sin(worldX * 0.02 + xTime * 0.5) * cos(worldZ * 0.02 + xTime * 0.3) * 2.0;
 	float wave2 = sin(worldX * 0.05 + worldZ * 0.05 + xTime * 0.7) * 1.5;
 	float wave3 = cos(worldX * 0.01 - worldZ * 0.01 + xTime * 0.4) * 1.0;
-	float totalWave = wave1 + wave2 + wave3;
+	
+	// Add small-scale wave height variation (visible when close) - HIGHER FREQ, MORE PRONOUNCED
+	float wave4 = sin(worldX * 0.4 + xTime * 1.2) * cos(worldZ * 0.4 + xTime * 0.9) * 1.2;
+	float wave5 = sin(worldX * 0.8 + worldZ * 0.8 + xTime * 1.8) * 0.8;
+	float wave6 = cos(worldX * 1.5 - worldZ * 1.5 + xTime * 1.0) * 0.5;
+	float smallWaveHeight = (wave4 + wave5 + wave6) * detailScale * 1.2; // Additional multiplier
+	
+	float totalWave = wave1 + wave2 + wave3 + smallWaveHeight;
 	
 	// ===== DEPTH-BASED COLOR ABSORPTION =====
 	// Simulate depth using wave variation and distance from center
@@ -496,7 +553,13 @@ PixelToFrame Water2PS(VertexToPixel PSIn)
 	float2 causticUV = float2(worldX, worldZ) * 0.005 + float2(xTime * 0.4, xTime * 0.3);
 	float caustic1 = sin(causticUV.x * 3.0) * cos(causticUV.y * 3.0);
 	float caustic2 = sin(causticUV.x * 5.0 + causticUV.y * 2.0 + xTime * 0.5) * 0.5;
-	float causticPattern = saturate(caustic1 + caustic2);
+	
+	// Add small-scale caustic detail when camera is close
+	float2 causticUVSmall = float2(worldX, worldZ) * 0.02 + float2(xTime * 1.0, xTime * 0.8);
+	float causticSmall = sin(causticUVSmall.x * 8.0) * cos(causticUVSmall.y * 8.0) * 0.3;
+	causticSmall *= detailScale; // Only visible when close
+	
+	float causticPattern = saturate(caustic1 + caustic2 + causticSmall);
 	causticPattern = pow(causticPattern, 2.0); // Sharper caustics
 	
 	// Apply caustics to underwater color (multiply by light color)
@@ -517,7 +580,7 @@ PixelToFrame Water2PS(VertexToPixel PSIn)
 	
 	// ===== FRESNEL EFFECT =====
 	// More realistic fresnel based on viewing angle
-	float3 viewDir = normalize(xCamPos - float3(worldX, 0, worldZ));
+	float3 viewDir = normalize(xCamPos - float3(worldX, waterHeight, worldZ));
 	float fresnel = 1.0 - saturate(dot(surfaceNormal, viewDir));
 	fresnel = pow(fresnel, 2.0);
 	
@@ -525,10 +588,24 @@ PixelToFrame Water2PS(VertexToPixel PSIn)
 	// Mix surface color (reflective) with underwater color (refractive)
 	float3 surfaceColor = lerp(waterColor, waterColor * 1.5, fresnel);
 	
-	// Apply specular highlights based on surface normals
+	// Apply specular highlights based on surface normals with bump mapping
 	float3 lightDir = normalize(-xLightDirection);
+	
+	// Main specular highlight using combined normal (surface + bump)
 	float specular = pow(saturate(dot(reflect(-lightDir, surfaceNormal), viewDir)), 32.0);
-	surfaceColor += float3(1.0, 1.0, 1.0) * specular * 0.5;
+	
+	// Bump-mapped specular highlights - multiple layers for more pronounced effect
+	float specularBump1 = pow(saturate(dot(reflect(-lightDir, bumpNormal), viewDir)), 64.0);
+	float specularBump2 = pow(saturate(dot(reflect(-lightDir, bumpNormal), viewDir)), 128.0);
+	float specularBump3 = pow(saturate(dot(reflect(-lightDir, bumpNormal), viewDir)), 256.0);
+	
+	// Combine specular highlights - bump mapping adds much more pronounced detail
+	float totalSpecular = specular * 0.6 + 
+	                      specularBump1 * detailScale * 0.4 +
+	                      specularBump2 * detailScale * 0.3 +
+	                      specularBump3 * detailScale * 0.2;
+	
+	surfaceColor += float3(1.0, 1.0, 1.0) * totalSpecular;
 	
 	// Combine surface and underwater colors based on transparency
 	float transparency = 0.7;

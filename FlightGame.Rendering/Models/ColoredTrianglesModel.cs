@@ -9,6 +9,7 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
     private readonly VertexPositionColorNormal[] _vertices = [];
     private readonly int[] _indices = [];
     private readonly BoundingSphere _boundingSphere;
+    private readonly string _effectTechniqueName;
     private VertexBuffer? _vertexBuffer;
     private IndexBuffer? _indexBuffer;
     private VertexBuffer? _instanceBuffer;
@@ -44,7 +45,7 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
 
     public int TriangleCount { get; }
 
-    public ColoredTrianglesModel(IReadOnlyList<Triangle> triangles)
+    public ColoredTrianglesModel(string effectTechniqueName, IReadOnlyList<Triangle> triangles)
     {
         ArgumentNullException.ThrowIfNull(triangles);
 
@@ -110,6 +111,7 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
         var radius = diagonal.Length() * 0.5f;
 
         _boundingSphere = new BoundingSphere(center, radius);
+        _effectTechniqueName = effectTechniqueName;
     }
 
     private static void UpdateBoundingBox(ref Vector3 min, ref Vector3 max, Vector3 position)
@@ -122,7 +124,7 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
         max.Z = Math.Max(max.Z, position.Z);
     }
 
-    public void Render(Effect effect, RenderContext renderContext)
+    public void Render(RenderContext renderContext)
     {
         if (_vertexBuffer == null || _indexBuffer == null)
         {
@@ -131,7 +133,9 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
 
         var graphicsDevice = _vertexBuffer.GraphicsDevice;
 
-        foreach (var pass in effect.CurrentTechnique.Passes)
+        renderContext.Effect.CurrentTechnique = renderContext.Effect.Techniques[_effectTechniqueName];
+
+        foreach (var pass in renderContext.Effect.CurrentTechnique.Passes)
         {
             pass.Apply();
 
@@ -150,7 +154,7 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
     /// <param name="effect">The effect to use for rendering.</param>
     /// <param name="renderContext">The render context.</param>
     /// <param name="worldMatrices">Array of world transformation matrices, one per instance.</param>
-    public void RenderInstanced(Effect effect, RenderContext renderContext, IReadOnlyList<Matrix> worldMatrices)
+    public void RenderInstanced(RenderContext renderContext, IReadOnlyList<Matrix> worldMatrices)
     {
         if (worldMatrices == null || worldMatrices.Count == 0)
         {
@@ -188,17 +192,9 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
 
         _instanceBuffer.SetData(instanceData);
 
-        // Store original technique
-        var originalTechnique = effect.CurrentTechnique;
+        renderContext.Effect.CurrentTechnique = renderContext.Effect.Techniques[$"{_effectTechniqueName}Instanced"];
 
-        // Use instanced technique if available, otherwise fall back to regular rendering
-        var instancedTechnique = effect.Techniques["ColoredInstanced"];
-        if (instancedTechnique != null)
-        {
-            effect.CurrentTechnique = instancedTechnique;
-        }
-
-        foreach (var pass in effect.CurrentTechnique.Passes)
+        foreach (var pass in renderContext.Effect.CurrentTechnique.Passes)
         {
             pass.Apply();
 
@@ -221,9 +217,6 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
 
             renderContext.PerformanceCounter.AddTriangles((_indices.Length / 3) * worldMatrices.Count);
         }
-
-        // Restore original technique
-        effect.CurrentTechnique = originalTechnique;
     }
 
     public void SetDevice(GraphicsDevice device)

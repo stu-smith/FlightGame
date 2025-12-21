@@ -208,14 +208,14 @@ public class LandscapeChunk : IOctreeItem, IRenderable
             }
         }
 
-        _model = new ColoredTrianglesModel(triangles);
+        _model = new ColoredTrianglesModel("Colored", triangles);
 
         _model.SetDevice(device);
     }
 
     public int TriangleCount => _model?.TriangleCount ?? 0;
 
-    public void Render(Effect effect, RenderContext renderContext)
+    public void Render(RenderContext renderContext)
     {
         if (_device == null)
         {
@@ -224,7 +224,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
         var model = _model ?? throw new InvalidOperationException("Model has not been built. Call BuildModel() first.");
 
-        model.Render(effect, renderContext);
+        model.Render(renderContext);
     }
 
     public BoundingSphere GetBoundingSphere()

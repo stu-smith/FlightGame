@@ -4,16 +4,42 @@ using Microsoft.Xna.Framework;
 
 namespace FlightGame.World.Actors;
 
-public class SceneryActor(Vector3 position, ObjModel model) : IMultiInstanceRenderable, IOctreeItem
+public class SceneryActor : IMultiInstanceRenderable, IOctreeItem
 {
-    private readonly Matrix _worldMatrix = Matrix.CreateTranslation(position);
+    private readonly Matrix _worldMatrix;
+    private readonly ObjModel _model;
 
-    public IMultiInstanceRenderer MultiInstanceRenderer => model;
+    public SceneryActor(
+        Vector3 position,
+        ObjModel model,
+        float? scale = null,
+        float? rotationYDegrees = null
+)
+    {
+        _model = model;
+
+        var matrix = Matrix.Identity;
+
+        if (scale.HasValue)
+        {
+            matrix *= Matrix.CreateScale(scale.Value);
+        }
+
+        if (rotationYDegrees.HasValue)
+        {
+            var rotationYRadians = MathHelper.ToRadians(rotationYDegrees.Value);
+            matrix *= Matrix.CreateRotationY(rotationYRadians);
+        }
+
+        _worldMatrix = matrix * Matrix.CreateTranslation(position);
+    }
+
+    public IMultiInstanceRenderer MultiInstanceRenderer => _model;
 
     public Matrix WorldMatrix => _worldMatrix;
 
     public BoundingSphere GetBoundingSphere()
     {
-        return model.GetBoundingSphere().Transform(_worldMatrix);
+        return _model.GetBoundingSphere().Transform(_worldMatrix);
     }
 }

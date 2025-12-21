@@ -19,7 +19,7 @@ public class World : IRenderable
     private readonly Octree<IRenderable> _octree = new(_worldSize);
 
     private ObjModel? _testObjModel;
-    private readonly WaterRendererType2 _waterRenderer = new();
+    private readonly WaterRenderer _waterRenderer = new();
 
     public World()
     {
@@ -89,7 +89,7 @@ public class World : IRenderable
         _waterRenderer.Update(gameTime);
     }
 
-    public void Render(Effect effect, RenderContext renderContext)
+    public void Render(RenderContext renderContext)
     {
         if (_device == null)
         {
@@ -105,11 +105,11 @@ public class World : IRenderable
 
         foreach (var item in allChunks)
         {
-            item.Render(effect, renderContext);
+            item.Render(renderContext);
         }
 
         // Render water surface
-        _waterRenderer.Render(effect, renderContext);
+        _waterRenderer.Render(renderContext);
 
         var matrices = new List<Matrix>();
 
@@ -122,7 +122,7 @@ public class World : IRenderable
             }
         }
 
-        _testObjModel!.RenderInstanced(effect, renderContext, matrices);
+        _testObjModel!.RenderInstanced(renderContext, matrices);
 
         //var moveMatrix = Matrix.CreateTranslation(60f, 800f, -900f);
         //effect.Parameters["xWorld"].SetValue(moveMatrix);
@@ -147,7 +147,7 @@ public class World : IRenderable
 
         const string assetName = "Models/Test";
 
-        _testObjModel = new(content, assetName);
+        _testObjModel = new("Colored", content, assetName);
         _testObjModel!.SetDevice(_device);
     }
 }

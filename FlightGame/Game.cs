@@ -28,12 +28,11 @@ public class Game : Microsoft.Xna.Framework.Game
     private SpriteFont? _font;
     private SpriteBatch? _spriteBatch;
     private readonly World.Worlds.World _world = new();
-    private readonly RenderContext _renderContext;
+    private RenderContext? _renderContext;
 
     public Game()
     {
         _graphics = new GraphicsDeviceManager(this);
-        _renderContext = new(_performanceCounter);
 
         IsMouseVisible = true;
     }
@@ -67,6 +66,8 @@ public class Game : Microsoft.Xna.Framework.Game
         _effect = Content.Load<Effect>("effects");
         _font = Content.Load<SpriteFont>("Fonts/DefaultFont");
         _spriteBatch = new SpriteBatch(_device);
+
+        _renderContext = new(_effect, _performanceCounter);
 
         SetUpCamera();
 
@@ -103,15 +104,9 @@ public class Game : Microsoft.Xna.Framework.Game
 
     protected override void Draw(GameTime gameTime)
     {
-        if (_device == null)
-        {
-            throw new InvalidOperationException("Graphics device is not initialized.");
-        }
-
-        if (_effect == null)
-        {
-            throw new InvalidOperationException("Effect is not initialized.");
-        }
+        ArgumentNullException.ThrowIfNull(_device, nameof(_device));
+        ArgumentNullException.ThrowIfNull(_effect, nameof(_effect));
+        ArgumentNullException.ThrowIfNull(_renderContext, nameof(_renderContext));
 
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
 
@@ -164,7 +159,7 @@ public class Game : Microsoft.Xna.Framework.Game
 
         _performanceCounter.BeginFrame();
 
-        _world.Render(_effect, _renderContext);
+        _world.Render(_renderContext);
 
         _performanceCounter.EndFrame();
 

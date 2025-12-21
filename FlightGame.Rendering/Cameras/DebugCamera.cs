@@ -12,6 +12,8 @@ public class DebugCamera : ICamera
     private const float _moveSpeed = 200f;   // units per second
     private const float _turnSpeed = 2f;    // radians per second
 
+    public Vector3 Position => _position;
+
     public void Update(GameTime gameTime)
     {
         var keyboard = Keyboard.GetState();
@@ -85,7 +87,7 @@ public class DebugCamera : ICamera
             sinPitch,
             cosPitch * cosYaw);
 
-        return Matrix.CreateLookAt(_position, _position + forward, Vector3.Up);
+        return Matrix.CreateLookAt(Position, Position + forward, Vector3.Up);
     }
 
     public Matrix CreateProjectionMatrix(

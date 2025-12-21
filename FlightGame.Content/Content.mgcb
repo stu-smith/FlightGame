@@ -32,3 +32,10 @@
 #begin Models/Test.obj
 /copy:Models/Test.obj
 
+#begin Models/Scenery/Trees/PineTree.mtl
+/copy:Models/Scenery/Trees/PineTree.mtl
+
+#begin Models/Scenery/Trees/PineTree.obj
+/copy:Models/Scenery/Trees/PineTree.obj
+
+

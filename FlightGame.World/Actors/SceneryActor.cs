@@ -14,7 +14,7 @@ public class SceneryActor : IMultiInstanceRenderable, IOctreeItem
         ObjModel model,
         float? scale = null,
         float? rotationYDegrees = null
-)
+    )
     {
         _model = model;
 
@@ -38,8 +38,5 @@ public class SceneryActor : IMultiInstanceRenderable, IOctreeItem
 
     public Matrix WorldMatrix => _worldMatrix;
 
-    public BoundingSphere GetBoundingSphere()
-    {
-        return _model.GetBoundingSphere().Transform(_worldMatrix);
-    }
+    public BoundingSphere GetBoundingSphere() => _model.GetBoundingSphere().Transform(_worldMatrix);
 }

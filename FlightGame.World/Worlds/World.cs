@@ -5,6 +5,7 @@ using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Landscape;
 using FlightGame.Rendering.Models;
 using FlightGame.Rendering.Water;
+using FlightGame.World.Actors.Scenery.Trees;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -66,7 +67,16 @@ public class World : IRenderable
 
         foreach (var chunk in landscapeChunks)
         {
-            _octree.Insert(chunk);
+            var worldChunk = new WorldChunk(chunk);
+
+            worldChunk.AddRandomSceneryActors(
+                PineTree.CreateAtPosition,
+                minHeight: 10f,
+                maxHeight: 200f,
+                count: 20
+            );
+
+            _octree.Insert(worldChunk);
         }
     }
 

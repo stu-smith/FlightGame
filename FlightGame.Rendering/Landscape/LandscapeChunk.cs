@@ -21,6 +21,9 @@ public class LandscapeChunk : IOctreeItem, IRenderable
     private readonly float _worldMinZ;
     private readonly float _worldMaxZ;
 
+    private float _minHeight = float.MaxValue;
+    private float _maxHeight = float.MinValue;
+
     private GraphicsDevice? _device;
     private ColoredTrianglesModel? _model;
     private readonly BoundingSphere _boundingSphere;
@@ -53,9 +56,6 @@ public class LandscapeChunk : IOctreeItem, IRenderable
     // Compute bounding sphere during construction
     private BoundingSphere ComputeBoundingSphere()
     {
-        var minHeight = float.MaxValue;
-        var maxHeight = float.MinValue;
-
         // Find min and max height in the chunk
         for (var z = _dataMinZ; z <= _dataMaxZ; z++)
         {
@@ -64,28 +64,28 @@ public class LandscapeChunk : IOctreeItem, IRenderable
                 var point = _landscapeData[x, z];
                 if (point != null)
                 {
-                    if (point.Height < minHeight)
+                    if (point.Height < _minHeight)
                     {
-                        minHeight = point.Height;
+                        _minHeight = point.Height;
                     }
-                    if (point.Height > maxHeight)
+                    if (point.Height > _maxHeight)
                     {
-                        maxHeight = point.Height;
+                        _maxHeight = point.Height;
                     }
                 }
             }
         }
 
         // If no height data found, default to 0
-        if (minHeight == float.MaxValue)
+        if (_minHeight == float.MaxValue)
         {
-            minHeight = 0f;
-            maxHeight = 0f;
+            _minHeight = 0f;
+            _maxHeight = 0f;
         }
 
         // Convert bounding box to bounding sphere
-        var min = new Vector3(_worldMinX, minHeight, _worldMinZ);
-        var max = new Vector3(_worldMaxX, maxHeight, _worldMaxZ);
+        var min = new Vector3(WorldMinX, _minHeight, WorldMinZ);
+        var max = new Vector3(WorldMaxX, _maxHeight, WorldMaxZ);
         var center = (min + max) * 0.5f;
         var diagonal = max - min;
         var radius = diagonal.Length() * 0.5f;
@@ -139,13 +139,13 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
             // Map X from data coordinates to world coordinates
             var worldX = _dataMaxX == _dataMinX
-                ? _worldMinX
-                : _worldMinX + (dataX - _dataMinX) / (float)(_dataMaxX - _dataMinX) * (_worldMaxX - _worldMinX);
+                ? WorldMinX
+                : WorldMinX + (dataX - _dataMinX) / (float)(_dataMaxX - _dataMinX) * (WorldMaxX - WorldMinX);
 
             // Map Z from data coordinates to world coordinates
             var worldZ = _dataMaxZ == _dataMinZ
-                ? _worldMinZ
-                : _worldMinZ + (dataZ - _dataMinZ) / (float)(_dataMaxZ - _dataMinZ) * (_worldMaxZ - _worldMinZ);
+                ? WorldMinZ
+                : WorldMinZ + (dataZ - _dataMinZ) / (float)(_dataMaxZ - _dataMinZ) * (WorldMaxZ - WorldMinZ);
 
             // Height is already in world coordinates (from LandscapePoint)
             var worldY = point?.Height ?? 0;
@@ -215,6 +215,14 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
     public int TriangleCount => _model?.TriangleCount ?? 0;
 
+    public float WorldMinX => _worldMinX;
+
+    public float WorldMaxX => _worldMaxX;
+
+    public float WorldMinZ => _worldMinZ;
+
+    public float WorldMaxZ => _worldMaxZ;
+
     public void Render(RenderContext renderContext)
     {
         if (_device == null)
@@ -241,7 +249,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
     public float? GetHeight(float x, float z)
     {
         // Check if coordinates are within world bounds
-        if (x < _worldMinX || x > _worldMaxX || z < _worldMinZ || z > _worldMaxZ)
+        if (x < WorldMinX || x > WorldMaxX || z < WorldMinZ || z > WorldMaxZ)
         {
             return null;
         }
@@ -256,7 +264,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         }
         else
         {
-            var normalizedX = (x - _worldMinX) / (_worldMaxX - _worldMinX);
+            var normalizedX = (x - WorldMinX) / (WorldMaxX - WorldMinX);
             dataX = _dataMinX + (int)Math.Round(normalizedX * (_dataMaxX - _dataMinX));
             // Clamp to ensure we're within bounds (handles floating point precision issues)
             dataX = Math.Clamp(dataX, _dataMinX, _dataMaxX);
@@ -268,7 +276,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         }
         else
         {
-            var normalizedZ = (z - _worldMinZ) / (_worldMaxZ - _worldMinZ);
+            var normalizedZ = (z - WorldMinZ) / (WorldMaxZ - WorldMinZ);
             dataZ = _dataMinZ + (int)Math.Round(normalizedZ * (_dataMaxZ - _dataMinZ));
             // Clamp to ensure we're within bounds (handles floating point precision issues)
             dataZ = Math.Clamp(dataZ, _dataMinZ, _dataMaxZ);
@@ -277,5 +285,13 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         // Get the point from the landscape data
         var point = _landscapeData[dataX, dataZ];
         return point?.Height;
+    }
+
+    public BoundingBox GetBoundingBox()
+    {
+        var min = new Vector3(WorldMinX, _minHeight, WorldMinZ);
+        var max = new Vector3(WorldMaxX, _maxHeight, WorldMaxZ);
+
+        return new BoundingBox(min, max);
     }
 }

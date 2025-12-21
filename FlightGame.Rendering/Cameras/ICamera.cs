@@ -4,6 +4,8 @@ namespace FlightGame.Rendering.Cameras;
 
 public interface ICamera
 {
+    Vector3 Position { get; }
+
     void Update(GameTime gameTime);
 
     Matrix CreateViewMatrix();

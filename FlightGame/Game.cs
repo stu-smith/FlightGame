@@ -1,10 +1,12 @@
 using FlightGame.Rendering;
 using FlightGame.Rendering.Cameras;
 using FlightGame.Rendering.Core;
+using FlightGame.World.Actors.Scenery.Trees;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using System.Reflection.Metadata;
 using CullMode = Microsoft.Xna.Framework.Graphics.CullMode;
 using Effect = Microsoft.Xna.Framework.Graphics.Effect;
 using FillMode = Microsoft.Xna.Framework.Graphics.FillMode;
@@ -22,12 +24,11 @@ public class Game : Microsoft.Xna.Framework.Game
     private readonly GraphicsDeviceManager _graphics;
     private GraphicsDevice? _device;
     private Effect? _effect;
-    private float _angle = 0f;
     private readonly ICamera _camera = new DebugCamera();
     private readonly PerformanceCounter _performanceCounter = new();
     private SpriteFont? _font;
     private SpriteBatch? _spriteBatch;
-    private readonly World.Worlds.World _world = new();
+    private World.Worlds.World? _world;
     private RenderContext? _renderContext;
 
     public Game()
@@ -39,11 +40,15 @@ public class Game : Microsoft.Xna.Framework.Game
 
     protected override void Initialize()
     {
-        _graphics.PreferredBackBufferWidth = 1200;
-        _graphics.PreferredBackBufferHeight = 700;
         _graphics.IsFullScreen = false;
+        _graphics.PreferredBackBufferWidth = 1200;
+        _graphics.PreferredBackBufferHeight = 600;
         _graphics.PreferMultiSampling = false;
         _graphics.GraphicsProfile = GraphicsProfile.HiDef;
+        _graphics.ApplyChanges();
+
+        _graphics.PreferredBackBufferWidth = 1200;
+        _graphics.PreferredBackBufferHeight = 600;
         _graphics.ApplyChanges();
 
         Window.Title = "FlightGame";
@@ -67,9 +72,15 @@ public class Game : Microsoft.Xna.Framework.Game
         _font = Content.Load<SpriteFont>("Fonts/DefaultFont");
         _spriteBatch = new SpriteBatch(_device);
 
-        _renderContext = new(_effect, _performanceCounter);
+        _renderContext = new(_effect, _performanceCounter, _camera);
 
         SetUpCamera();
+
+        // TODO: Automate
+        PineTree.LoadContent(Content);
+        PineTree.SetDevice(_device);
+
+        _world = new();
 
         _world.SetDevice(_device);
         _world.LoadContent(Content);
@@ -84,20 +95,12 @@ public class Game : Microsoft.Xna.Framework.Game
 
         // TODO: Add your update logic here
         var keyState = Keyboard.GetState();
-        if (keyState.IsKeyDown(Keys.Q))
-        {
-            _angle += 0.01f;
-        }
-        if (keyState.IsKeyDown(Keys.E))
-        {
-            _angle -= 0.01f;
-        }
 
         _camera.Update(gameTime);
 
         _performanceCounter?.Update(gameTime);
 
-        _world.Update(gameTime);
+        _world?.Update(gameTime);
 
         base.Update(gameTime);
     }
@@ -137,12 +140,10 @@ public class Game : Microsoft.Xna.Framework.Game
         );
 
         // Rotate the world around the center of the terrain instead of the global origin
-        var worldMatrix = Matrix.CreateRotationY(_angle);
-
         _effect.CurrentTechnique = _effect.Techniques["Colored"];
         _effect.Parameters["xView"].SetValue(viewMatrix);
         _effect.Parameters["xProjection"].SetValue(projectionMatrix);
-        _effect.Parameters["xWorld"].SetValue(worldMatrix);
+        _effect.Parameters["xWorld"].SetValue(Matrix.Identity);
 
         var lightDirection = new Vector3(1.0f, -1.0f, -1.0f);
         lightDirection.Normalize();
@@ -159,7 +160,7 @@ public class Game : Microsoft.Xna.Framework.Game
 
         _performanceCounter.BeginFrame();
 
-        _world.Render(_renderContext);
+        _world?.Render(_renderContext);
 
         _performanceCounter.EndFrame();
 

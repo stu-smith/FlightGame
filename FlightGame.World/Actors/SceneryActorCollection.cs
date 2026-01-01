@@ -30,11 +30,11 @@ public class SceneryActorCollection(BoundingBox worldBounds) : IRenderable
         return _octree.BoundingBox.ToBoundingSphere();
     }
 
-    public void Render(RenderContext renderContext)
+    public void Render(RenderContext renderContext, RenderParameters renderParameters)
     {
         foreach (var renderableList in _renderableLists.Values)
         {
-            renderableList.Render(renderContext);
+            renderableList.Render(renderContext, renderParameters);
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using FlightGame.Rendering.Models;
+﻿using FlightGame.Rendering.Core;
+using FlightGame.Rendering.Models;
 using FlightGame.Shared.Extensions;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -28,7 +29,7 @@ public class PineTree : SceneryActor
     public static void LoadContent(ContentManager content)
     {
         _pineTreeModel = new(
-            "Colored",
+            EffectSet.Colored,
             content,
             "Models/Scenery/Trees/PineTree"
         );

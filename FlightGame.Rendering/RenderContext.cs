@@ -6,11 +6,17 @@ using Microsoft.Xna.Framework.Graphics;
 namespace FlightGame.Rendering;
 
 public class RenderContext(
+    GraphicsDeviceManager graphicsDeviceManager,
+    GraphicsDevice graphicsDevice,
     Effect effect,
     PerformanceCounter performanceCounter,
     ICamera camera
 )
 {
+    public GraphicsDeviceManager GraphicsDeviceManager { get; } = graphicsDeviceManager;
+
+    public GraphicsDevice GraphicsDevice { get; } = graphicsDevice;
+
     public Effect Effect { get; } = effect;
 
     public PerformanceCounter PerformanceCounter { get; } = performanceCounter;

@@ -20,7 +20,7 @@ public class World : IRenderable
     private readonly Octree<IRenderable> _octree = new(_worldSize);
 
     private ObjModel? _testObjModel;
-    private readonly WaterRenderer _waterRenderer = new();
+    private readonly WaterRenderer _waterRenderer = new(EffectSet.WaterTropical);
 
     public World()
     {
@@ -63,7 +63,7 @@ public class World : IRenderable
 
         landscapeModel.AutoAssignColors(colorStops);
 
-        var landscapeChunks = LandscapeChunk.CreateChunksFromLandscape(landscapeModel);
+        var landscapeChunks = LandscapeChunk.CreateChunksFromLandscape(landscapeModel, EffectSet.Colored);
 
         foreach (var chunk in landscapeChunks)
         {
@@ -96,10 +96,9 @@ public class World : IRenderable
 
     public void Update(GameTime gameTime)
     {
-        _waterRenderer.Update(gameTime);
     }
 
-    public void Render(RenderContext renderContext)
+    public void Render(RenderContext renderContext, RenderParameters renderParameters)
     {
         if (_device == null)
         {
@@ -115,11 +114,11 @@ public class World : IRenderable
 
         foreach (var item in allChunks)
         {
-            item.Render(renderContext);
+            item.Render(renderContext, renderParameters);
         }
 
         // Render water surface
-        _waterRenderer.Render(renderContext);
+        _waterRenderer.Render(renderContext, renderParameters);
 
         var matrices = new List<Matrix>();
 
@@ -132,7 +131,7 @@ public class World : IRenderable
             }
         }
 
-        _testObjModel!.RenderInstanced(renderContext, matrices);
+        _testObjModel!.RenderInstanced(renderContext, renderParameters, matrices);
 
         //var moveMatrix = Matrix.CreateTranslation(60f, 800f, -900f);
         //effect.Parameters["xWorld"].SetValue(moveMatrix);
@@ -157,7 +156,7 @@ public class World : IRenderable
 
         const string assetName = "Models/Test";
 
-        _testObjModel = new("Colored", content, assetName);
+        _testObjModel = new(EffectSet.Colored, content, assetName);
         _testObjModel!.SetDevice(_device);
     }
 }

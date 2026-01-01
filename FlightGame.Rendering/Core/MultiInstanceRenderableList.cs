@@ -45,9 +45,9 @@ public class MultiInstanceRenderableList : IRenderable
         throw new NotImplementedException();
     }
 
-    public void Render(RenderContext renderContext)
+    public void Render(RenderContext renderContext, RenderParameters renderParameters)
     {
-        _multiInstanceRenderer.RenderInstanced(renderContext, _worldMatrices);
+        _multiInstanceRenderer.RenderInstanced(renderContext, renderParameters, _worldMatrices);
     }
 
     public void SetDevice(GraphicsDevice device)

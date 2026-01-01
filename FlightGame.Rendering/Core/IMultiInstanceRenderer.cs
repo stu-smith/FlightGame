@@ -4,5 +4,9 @@ namespace FlightGame.Rendering.Core;
 
 public interface IMultiInstanceRenderer
 {
-    void RenderInstanced(RenderContext renderContext, IReadOnlyList<Matrix> worldMatrices);
+    void RenderInstanced(
+        RenderContext renderContext,
+        RenderParameters renderParameters,
+        IReadOnlyList<Matrix> worldMatrices
+    );
 }

@@ -13,14 +13,15 @@ public class WaterRenderer : IRenderable
     private VertexBuffer? _vertexBuffer;
     private IndexBuffer? _indexBuffer;
     private readonly BoundingSphere _boundingSphere;
-    private float _time = 0f;
+    private readonly EffectSet _effectSet;
 
-    public WaterRenderer()
+    public WaterRenderer(EffectSet effectSet)
     {
         // Create bounding sphere for the water plane
         var center = Vector3.Zero;
         var radius = (float)(_waterSize * Math.Sqrt(2.0) * 0.5); // Diagonal half-length
         _boundingSphere = new BoundingSphere(center, radius);
+        _effectSet = effectSet;
     }
 
     public void SetDevice(GraphicsDevice device)
@@ -94,23 +95,19 @@ public class WaterRenderer : IRenderable
         _indexBuffer.SetData(indices);
     }
 
-    public void Update(GameTime gameTime)
-    {
-        // Update time for animation
-        _time += (float)gameTime.ElapsedGameTime.TotalSeconds;
-    }
-
-    public void Render(RenderContext renderContext)
+    public void Render(RenderContext renderContext, RenderParameters renderParameters)
     {
         if (_device == null || _vertexBuffer == null || _indexBuffer == null)
         {
             throw new InvalidOperationException("Graphics device not set. Call SetDevice() before rendering.");
         }
 
-        renderContext.Effect.CurrentTechnique = renderContext.Effect.Techniques["Water2"];
+        if (renderParameters.Opacity < 1f)
+        {
+            throw new InvalidOperationException("WaterRenderer cannot render with opacity.");
+        }
 
-        // Set time parameter for animation
-        renderContext.Effect.Parameters["xTime"]?.SetValue(_time);
+        _effectSet.ApplyStandard(renderContext);
 
         foreach (var pass in renderContext.Effect.CurrentTechnique.Passes)
         {

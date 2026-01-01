@@ -10,7 +10,7 @@ namespace FlightGame.Rendering.Landscape;
 public class LandscapeChunk : IOctreeItem, IRenderable
 {
     private const int _chunkSize = 100;
-
+    private readonly EffectSet _effectSet;
     private readonly IReadOnlySparse2dArray<LandscapePoint> _landscapeData;
     private readonly int _dataMinX;
     private readonly int _dataMaxX;
@@ -29,6 +29,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
     private readonly BoundingSphere _boundingSphere;
 
     public LandscapeChunk(
+        EffectSet effectSet,
         IReadOnlySparse2dArray<LandscapePoint> landscapeData,
         int dataMinX,
         int dataMaxX,
@@ -39,6 +40,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         float worldMinZ,
         float worldMaxZ)
     {
+        _effectSet = effectSet;
         _landscapeData = landscapeData;
         _dataMinX = dataMinX;
         _dataMaxX = dataMaxX;
@@ -93,7 +95,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         return new BoundingSphere(center, radius);
     }
 
-    public static IReadOnlyList<LandscapeChunk> CreateChunksFromLandscape(LandscapeModel landscape)
+    public static IReadOnlyList<LandscapeChunk> CreateChunksFromLandscape(LandscapeModel landscape, EffectSet effectSet)
     {
         var chunks = new List<LandscapeChunk>();
         var points = landscape.Points;
@@ -113,6 +115,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
                 }
 
                 chunks.Add(new LandscapeChunk(
+                    effectSet,
                     points,
                     chunkMinX,
                     chunkMaxX,
@@ -208,7 +211,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
             }
         }
 
-        _model = new ColoredTrianglesModel("Colored", triangles);
+        _model = new ColoredTrianglesModel(_effectSet, triangles);
 
         _model.SetDevice(device);
     }
@@ -223,16 +226,21 @@ public class LandscapeChunk : IOctreeItem, IRenderable
 
     public float WorldMaxZ => _worldMaxZ;
 
-    public void Render(RenderContext renderContext)
+    public void Render(RenderContext renderContext, RenderParameters renderParameters)
     {
         if (_device == null)
         {
             throw new InvalidOperationException("Graphics device has not been set. Call SetDevice() first.");
         }
 
+        if (renderParameters.Opacity < 1.0f)
+        {
+            throw new InvalidOperationException("LandscapeChunk does not support transparency.");
+        }
+
         var model = _model ?? throw new InvalidOperationException("Model has not been built. Call BuildModel() first.");
 
-        model.Render(renderContext);
+        model.Render(renderContext, renderParameters);
     }
 
     public BoundingSphere GetBoundingSphere()

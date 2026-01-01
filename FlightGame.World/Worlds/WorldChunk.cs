@@ -20,18 +20,44 @@ public class WorldChunk(
         return landscapeChunk.GetBoundingSphere();
     }
 
-    public void Render(RenderContext renderContext)
+    public void Render(RenderContext renderContext, RenderParameters renderParameters)
     {
-        landscapeChunk.Render(renderContext);
+        landscapeChunk.Render(renderContext, renderParameters);
         
-        // Only render SceneryActors if the distance to the camera is less than 5000
         var cameraPosition = renderContext.Camera.Position;
         var chunkCenter = GetBoundingSphere().Center;
         var distanceToCamera = Vector3.Distance(chunkCenter, cameraPosition);
         
-        if (distanceToCamera < 2000f)
+        // Fade range: start fading at 2000, fully visible at 1500
+        const float fadeStartDistance = 2000f;
+        const float fadeEndDistance = 1500f;
+
+        if (distanceToCamera < fadeStartDistance)
         {
-            _sceneryActors.Render(renderContext);
+            // Calculate fade factor: 0.0 at fadeStartDistance, 1.0 at fadeEndDistance
+            var fadeAlpha = 1.0f;
+
+            if (distanceToCamera > fadeEndDistance)
+            {
+                var fadeRange = fadeStartDistance - fadeEndDistance;
+                var distanceInRange = distanceToCamera - fadeEndDistance;
+
+                fadeAlpha = 1.0f - (distanceInRange / fadeRange);
+            }
+
+            var sceneryRenderParameters = new RenderParameters
+            {
+                GameTimeSeconds = renderParameters.GameTimeSeconds,
+                Opacity = fadeAlpha
+            };
+
+            // Set fade parameter on effect
+            renderContext.Effect.Parameters["xFadeAlpha"].SetValue(fadeAlpha);
+            
+            _sceneryActors.Render(renderContext, sceneryRenderParameters);
+            
+            // Reset fade to fully opaque for other rendering
+            renderContext.Effect.Parameters["xFadeAlpha"].SetValue(1.0f);
         }
     }
 

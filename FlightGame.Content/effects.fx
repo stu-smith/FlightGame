@@ -5,6 +5,7 @@ struct VertexToPixel
     float4 Color		: COLOR0;
     float LightingFactor: TEXCOORD0;
     float2 TextureCoords: TEXCOORD1;
+    float2 ScreenPos   : TEXCOORD2; // Screen position for dithering
 };
 
 struct PixelToFrame
@@ -24,6 +25,7 @@ float3 xCamPos;
 float3 xCamUp;
 float xPointSpriteSize;
 float xTime;
+float xFadeAlpha; // Alpha value for dithered transparency (0.0 = fully transparent, 1.0 = fully opaque)
 
 //------- Texture Samplers --------
 
@@ -135,6 +137,9 @@ VertexToPixel ColoredInstancedVS(
 	Output.Position = mul(inPos, preWorldViewProjection);
 	Output.Color = inColor;
 	
+	// Pass screen position for dithering (in clip space, will be converted to screen space in pixel shader)
+	Output.ScreenPos = Output.Position.xy;
+	
 	float3 Normal = normalize(mul(normalize(inNormal), (float3x3)instanceWorld));	
 	Output.LightingFactor = 1;
 	if (xEnableLighting)
@@ -154,6 +159,82 @@ technique ColoredInstanced
 		// Instancing requires SM4, fall back to regular rendering
 		VertexShader = compile vs_1_1 ColoredVS();
 		PixelShader  = compile ps_2_0 ColoredPS();
+#endif				
+	}
+}
+
+//------- Technique: ColoredInstancedDithered --------
+
+PixelToFrame ColoredDitheredPS(VertexToPixel PSIn) 
+{
+	PixelToFrame Output = (PixelToFrame)0;		
+    
+	// Calculate base color with lighting
+	float4 baseColor = PSIn.Color;
+	baseColor.rgb *= saturate(PSIn.LightingFactor) + xAmbient;
+	
+	// 4x4 Bayer dithering matrix for smooth transparency fade
+	// Screen-space dithering using screen position passed from vertex shader
+	// Convert to positive integers for modulo operation
+	uint x = ((uint)abs(PSIn.ScreenPos.x)) % 4;
+	uint y = ((uint)abs(PSIn.ScreenPos.y)) % 4;
+	
+	// 4x4 Bayer matrix - using conditional logic for compatibility
+	float ditherThreshold = 0.0;
+	if (y == 0u)
+	{
+		if (x == 0u) ditherThreshold = 0.0 / 16.0;
+		else if (x == 1u) ditherThreshold = 8.0 / 16.0;
+		else if (x == 2u) ditherThreshold = 2.0 / 16.0;
+		else ditherThreshold = 10.0 / 16.0;
+	}
+	else if (y == 1u)
+	{
+		if (x == 0u) ditherThreshold = 12.0 / 16.0;
+		else if (x == 1u) ditherThreshold = 4.0 / 16.0;
+		else if (x == 2u) ditherThreshold = 14.0 / 16.0;
+		else ditherThreshold = 6.0 / 16.0;
+	}
+	else if (y == 2u)
+	{
+		if (x == 0u) ditherThreshold = 3.0 / 16.0;
+		else if (x == 1u) ditherThreshold = 11.0 / 16.0;
+		else if (x == 2u) ditherThreshold = 1.0 / 16.0;
+		else ditherThreshold = 9.0 / 16.0;
+	}
+	else
+	{
+		if (x == 0u) ditherThreshold = 15.0 / 16.0;
+		else if (x == 1u) ditherThreshold = 7.0 / 16.0;
+		else if (x == 2u) ditherThreshold = 13.0 / 16.0;
+		else ditherThreshold = 5.0 / 16.0;
+	}
+	
+	// Discard pixels based on fade alpha and dither pattern
+	// When xFadeAlpha is 0, all pixels are discarded
+	// When xFadeAlpha is 1, all pixels pass
+	// In between, the dither pattern creates a smooth fade
+	if (xFadeAlpha < ditherThreshold)
+	{
+		discard;
+	}
+	
+	Output.Color = baseColor;
+	
+	return Output;
+}
+
+technique ColoredInstancedDithered
+{
+	pass Pass0
+	{   
+#if SM4
+		VertexShader = compile vs_4_0_level_9_3 ColoredInstancedVS();
+		PixelShader  = compile ps_4_0_level_9_3 ColoredDitheredPS();
+#else
+		// Instancing requires SM4, fall back to regular rendering
+		VertexShader = compile vs_1_1 ColoredVS();
+		PixelShader  = compile ps_2_0 ColoredDitheredPS();
 #endif				
 	}
 }
@@ -325,86 +406,10 @@ technique PointSprites
 	}
 }
 
-//------- Technique: Water --------
 
-VertexToPixel WaterVS( float4 inPos : POSITION, float3 inNormal: NORMAL, float4 inColor: COLOR)
-{	
-	VertexToPixel Output = (VertexToPixel)0;
-	
-	// Create animated wave distortion for cartoony water effect
-	float3 pos = inPos.xyz;
-	
-	// Multiple wave layers for more interesting movement
-	float wave1 = sin(pos.x * 0.02 + xTime * 0.5) * cos(pos.z * 0.02 + xTime * 0.3) * 2.0;
-	float wave2 = sin(pos.x * 0.05 + pos.z * 0.05 + xTime * 0.7) * 1.5;
-	float wave3 = cos(pos.x * 0.01 - pos.z * 0.01 + xTime * 0.4) * 1.0;
-	
-	// Combine waves for smooth, cartoony animation
-	pos.y += wave1 + wave2 + wave3;
-	
-	// Transform position
-	float4x4 preViewProjection = mul (xView, xProjection);
-	float4x4 preWorldViewProjection = mul (xWorld, preViewProjection);
-    
-	Output.Position = mul(float4(pos, 1.0), preWorldViewProjection);
-	
-	// Pass through color with slight variation based on wave height
-	float waveIntensity = (wave1 + wave2 + wave3) * 0.1 + 0.5;
-	Output.Color = inColor;
-	Output.Color.rgb *= waveIntensity;
-	
-	// Calculate normal for lighting (slightly perturbed by waves)
-	float3 Normal = normalize(mul(normalize(inNormal), (float3x3)xWorld));
-	Output.LightingFactor = 1;
-	if (xEnableLighting)
-		Output.LightingFactor = dot(Normal, -xLightDirection);
-    
-	return Output;    
-}
+//------- Technique: WaterTropical (Shader-based waves on simple rectangle) --------
 
-PixelToFrame WaterPS(VertexToPixel PSIn) 
-{
-	PixelToFrame Output = (PixelToFrame)0;		
-    
-	// Cartoony water effect: bright, saturated blue with enhanced lighting
-	float4 baseColor = PSIn.Color;
-	
-	// Enhance the color saturation for cartoony look
-	float3 color = baseColor.rgb;
-	color = lerp(color, color * 1.3, 0.3); // Boost saturation
-	
-	// Add fresnel-like effect for stylized water edge
-	float fresnel = saturate(PSIn.LightingFactor * 0.5 + 0.5);
-	fresnel = pow(fresnel, 1.5); // Sharper transition for cartoony look
-	
-	// Mix between base color and lighter color based on fresnel
-	float3 finalColor = lerp(color, color * 1.5, fresnel);
-	
-	Output.Color = float4(finalColor, baseColor.a);
-	
-	// Apply lighting with enhanced contrast for cartoony style
-	Output.Color.rgb *= saturate(PSIn.LightingFactor * 1.2) + xAmbient * 0.8;
-	
-	return Output;
-}
-
-technique Water
-{
-	pass Pass0
-	{   
-#if SM4
-		VertexShader = compile vs_4_0_level_9_3 WaterVS();
-		PixelShader  = compile ps_4_0_level_9_3 WaterPS();
-#else
-		VertexShader = compile vs_1_1 WaterVS();
-		PixelShader  = compile ps_2_0 WaterPS();
-#endif				
-	}
-}
-
-//------- Technique: Water2 (Shader-based waves on simple rectangle) --------
-
-VertexToPixel Water2VS( float4 inPos : POSITION, float3 inNormal: NORMAL, float4 inColor: COLOR, float2 inTexCoords: TEXCOORD0)
+VertexToPixel WaterTropicalVS( float4 inPos : POSITION, float3 inNormal: NORMAL, float4 inColor: COLOR, float2 inTexCoords: TEXCOORD0)
 {	
 	VertexToPixel Output = (VertexToPixel)0;
 	
@@ -429,7 +434,7 @@ VertexToPixel Water2VS( float4 inPos : POSITION, float3 inNormal: NORMAL, float4
 	return Output;    
 }
 
-PixelToFrame Water2PS(VertexToPixel PSIn) 
+PixelToFrame WaterTropicalPS(VertexToPixel PSIn) 
 {
 	PixelToFrame Output = (PixelToFrame)0;		
     
@@ -622,16 +627,16 @@ PixelToFrame Water2PS(VertexToPixel PSIn)
 	return Output;
 }
 
-technique Water2
+technique WaterTropical
 {
 	pass Pass0
 	{   
 #if SM4
-		VertexShader = compile vs_4_0_level_9_3 Water2VS();
-		PixelShader  = compile ps_4_0_level_9_3 Water2PS();
+		VertexShader = compile vs_4_0_level_9_3 WaterTropicalVS();
+		PixelShader  = compile ps_4_0_level_9_3 WaterTropicalPS();
 #else
-		VertexShader = compile vs_1_1 Water2VS();
-		PixelShader  = compile ps_2_0 Water2PS();
+		VertexShader = compile vs_1_1 WaterTropicalVS();
+		PixelShader  = compile ps_2_0 WaterTropicalPS();
 #endif				
 	}
 }

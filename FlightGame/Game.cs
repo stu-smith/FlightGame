@@ -43,7 +43,7 @@ public class Game : Microsoft.Xna.Framework.Game
         _graphics.IsFullScreen = false;
         _graphics.PreferredBackBufferWidth = 1200;
         _graphics.PreferredBackBufferHeight = 600;
-        _graphics.PreferMultiSampling = false;
+        _graphics.PreferMultiSampling = true;
         _graphics.GraphicsProfile = GraphicsProfile.HiDef;
         _graphics.ApplyChanges();
 
@@ -72,7 +72,7 @@ public class Game : Microsoft.Xna.Framework.Game
         _font = Content.Load<SpriteFont>("Fonts/DefaultFont");
         _spriteBatch = new SpriteBatch(_device);
 
-        _renderContext = new(_effect, _performanceCounter, _camera);
+        _renderContext = new(_graphics, _device, _effect, _performanceCounter, _camera);
 
         SetUpCamera();
 
@@ -88,7 +88,8 @@ public class Game : Microsoft.Xna.Framework.Game
 
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
+            Keyboard.GetState().IsKeyDown(Keys.Escape))
         {
             Exit();
         }
@@ -147,9 +148,11 @@ public class Game : Microsoft.Xna.Framework.Game
 
         var lightDirection = new Vector3(1.0f, -1.0f, -1.0f);
         lightDirection.Normalize();
+
         _effect.Parameters["xLightDirection"].SetValue(lightDirection);
         _effect.Parameters["xAmbient"].SetValue(0.3f);
         _effect.Parameters["xEnableLighting"].SetValue(true);
+        _effect.Parameters["xFadeAlpha"].SetValue(1.0f); // Default to fully opaque
 
         _renderContext.ViewFrustum = _camera.GetFrustum(
             _nearPlane,
@@ -158,9 +161,14 @@ public class Game : Microsoft.Xna.Framework.Game
             _device.Viewport.AspectRatio
         );
 
+        var renderParameters = new RenderParameters
+        {
+            GameTimeSeconds = (float)gameTime.TotalGameTime.TotalSeconds
+        };
+
         _performanceCounter.BeginFrame();
 
-        _world?.Render(_renderContext);
+        _world?.Render(_renderContext, renderParameters);
 
         _performanceCounter.EndFrame();
 

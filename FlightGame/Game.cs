@@ -1,35 +1,19 @@
-using FlightGame.Rendering;
-using FlightGame.Rendering.Cameras;
-using FlightGame.Rendering.Core;
-using FlightGame.World.Actors.Scenery.Trees;
+using FlightGame.Activities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using System;
-using System.Reflection.Metadata;
-using CullMode = Microsoft.Xna.Framework.Graphics.CullMode;
-using Effect = Microsoft.Xna.Framework.Graphics.Effect;
-using FillMode = Microsoft.Xna.Framework.Graphics.FillMode;
-using RasterizerState = Microsoft.Xna.Framework.Graphics.RasterizerState;
 using SpriteFont = Microsoft.Xna.Framework.Graphics.SpriteFont;
 
 namespace FlightGame;
 
-public class Game : Microsoft.Xna.Framework.Game
+public class Game : Microsoft.Xna.Framework.Game, IActivityHost
 {
-    private const float _fieldOfView = MathHelper.PiOver4;
-    private const float _nearPlane = 1.0f;
-    private const float _farPlane = 20000.0f;
-
     private readonly GraphicsDeviceManager _graphics;
-    private GraphicsDevice? _device;
-    private Effect? _effect;
-    private readonly ICamera _camera = new DebugCamera();
-    private readonly PerformanceCounter _performanceCounter = new();
+    private ActivityContext? _activityContext;
+    private IActivity? _currentActivity;
+    private IActivity? _nextActivity;
     private SpriteFont? _font;
     private SpriteBatch? _spriteBatch;
-    private World.Worlds.World? _world;
-    private RenderContext? _renderContext;
 
     public Game()
     {
@@ -47,153 +31,65 @@ public class Game : Microsoft.Xna.Framework.Game
         _graphics.GraphicsProfile = GraphicsProfile.HiDef;
         _graphics.ApplyChanges();
 
-        _graphics.PreferredBackBufferWidth = 1200;
-        _graphics.PreferredBackBufferHeight = 600;
-        _graphics.ApplyChanges();
-
         Window.Title = "FlightGame";
 
         base.Initialize();
     }
 
-    private void SetUpCamera()
-    {
-        if (_device == null)
-        {
-            throw new InvalidOperationException("Graphics device is not initialized.");
-        }
-    }
-
     protected override void LoadContent()
     {
-        _device = _graphics.GraphicsDevice;
+        var device = _graphics.GraphicsDevice;
 
-        _effect = Content.Load<Effect>("effects");
         _font = Content.Load<SpriteFont>("Fonts/DefaultFont");
-        _spriteBatch = new SpriteBatch(_device);
+        _spriteBatch = new SpriteBatch(device);
 
-        _renderContext = new(_graphics, _device, _effect, _performanceCounter, _camera);
+        _activityContext = new ActivityContext(
+            this,
+            _graphics,
+            device,
+            Content,
+            _spriteBatch,
+            _font);
 
-        SetUpCamera();
-
-        // TODO: Automate
-        PineTree.LoadContent(Content);
-        PineTree.SetDevice(_device);
-
-        _world = new();
-
-        _world.SetDevice(_device);
-        _world.LoadContent(Content);
+        TransitionTo(new MainMenuActivity());
     }
 
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-            Keyboard.GetState().IsKeyDown(Keys.Escape))
+        _currentActivity?.Update(gameTime);
+
+        if (_nextActivity != null)
         {
-            Exit();
+            TransitionTo(_nextActivity);
+            _nextActivity = null;
         }
-
-        // TODO: Add your update logic here
-        var keyState = Keyboard.GetState();
-
-        _camera.Update(gameTime);
-
-        _performanceCounter?.Update(gameTime);
-
-        _world?.Update(gameTime);
 
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        ArgumentNullException.ThrowIfNull(_device, nameof(_device));
-        ArgumentNullException.ThrowIfNull(_effect, nameof(_effect));
-        ArgumentNullException.ThrowIfNull(_renderContext, nameof(_renderContext));
-
-        _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1.0f, 0);
-
-        // Enable z-buffering (depth testing)
-        var depthState = new DepthStencilState
-        {
-            DepthBufferEnable = true,
-            DepthBufferWriteEnable = true,
-            DepthBufferFunction = CompareFunction.LessEqual
-        };
-        _device.DepthStencilState = depthState;
-
-        var rs = new RasterizerState
-        {
-            CullMode = CullMode.CullClockwiseFace,
-            FillMode = FillMode.Solid
-        };
-
-        _device.RasterizerState = rs;
-
-        // TODO: Add your drawing code here
-        var viewMatrix = _camera.CreateViewMatrix();
-        var projectionMatrix = _camera.CreateProjectionMatrix(
-            _nearPlane,
-            _farPlane,
-            _fieldOfView,
-            _device.Viewport.AspectRatio
-        );
-
-        // Rotate the world around the center of the terrain instead of the global origin
-        _effect.CurrentTechnique = _effect.Techniques["Colored"];
-        _effect.Parameters["xView"].SetValue(viewMatrix);
-        _effect.Parameters["xProjection"].SetValue(projectionMatrix);
-        _effect.Parameters["xWorld"].SetValue(Matrix.Identity);
-
-        var lightDirection = new Vector3(1.0f, -1.0f, -1.0f);
-        lightDirection.Normalize();
-
-        _effect.Parameters["xLightDirection"].SetValue(lightDirection);
-        _effect.Parameters["xAmbient"].SetValue(0.3f);
-        _effect.Parameters["xEnableLighting"].SetValue(true);
-        _effect.Parameters["xFadeAlpha"].SetValue(1.0f); // Default to fully opaque
-
-        _renderContext.ViewFrustum = _camera.GetFrustum(
-            _nearPlane,
-            _farPlane,
-            _fieldOfView,
-            _device.Viewport.AspectRatio
-        );
-
-        var renderParameters = new RenderParameters
-        {
-            GameTimeSeconds = (float)gameTime.TotalGameTime.TotalSeconds
-        };
-
-        _performanceCounter.BeginFrame();
-
-        _world?.Render(_renderContext, renderParameters);
-
-        _performanceCounter.EndFrame();
-
-        // Draw performance stats in top-right corner
-        if (_spriteBatch != null && _font != null && _performanceCounter != null)
-        {
-            _spriteBatch.Begin();
-
-            var fpsText = $"FPS: {_performanceCounter.Fps:F1}";
-            var triangleText = $"Triangles: {_performanceCounter.TriangleCount:N0}";
-
-            var fpsSize = _font.MeasureString(fpsText);
-            var triangleSize = _font.MeasureString(triangleText);
-            var padding = 10f;
-            var lineHeight = fpsSize.Y + 5f;
-
-            var screenWidth = _device.Viewport.Width;
-            var position = new Vector2(screenWidth - Math.Max(fpsSize.X, triangleSize.X) - padding, padding);
-
-            _spriteBatch.DrawString(_font, fpsText, position, Color.White);
-            _spriteBatch.DrawString(_font, triangleText, position + new Vector2(0, lineHeight), Color.White);
-
-            _spriteBatch.End();
-        }
+        _currentActivity?.Draw(gameTime);
 
         base.Draw(gameTime);
+    }
+
+    public void SetActivity(IActivity activity)
+    {
+        _nextActivity = activity;
+    }
+
+    public void ExitGame()
+    {
+        Exit();
+    }
+
+    private void TransitionTo(IActivity activity)
+    {
+        _currentActivity?.Exit();
+        _currentActivity = activity;
+
+        ArgumentNullException.ThrowIfNull(_activityContext);
+        _currentActivity.Enter(this, _activityContext);
     }
 }

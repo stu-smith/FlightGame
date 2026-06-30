@@ -1,5 +1,4 @@
 using FlightGame.Models.Landscape;
-using FlightGame.Models.ProceduralGeneration;
 using FlightGame.Rendering;
 using FlightGame.Rendering.Core;
 using FlightGame.Rendering.Landscape;
@@ -27,16 +26,6 @@ public class World : IRenderable
         var rnd = new Random();
 
         var landscapeModel = new LandscapeModel(_worldSize);
-
-        var proceduralIsland = new VoronoiIslandGenerator()
-            .GenerateIsland(new VoronoiIslandGenerator.GenerationParameters
-            {
-                NoiseScale = 0.5f,
-            });
-
-        landscapeModel.AddLandscapeData(proceduralIsland, 0, 0);
-
-        //landscapeModel.AddHeightMap("HeightMaps/TestIsland", 0, 0, 100);
 
         for (var i = 0; i < 30; i++)
         {

@@ -109,7 +109,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
                 var chunkMaxY = Math.Min(chunkMinY + _chunkSize, points.MaxY);
 
                 // Skip empty chunks � this keeps the list smaller when most of the map is empty.
-                if (!landscape.HasData(chunkMinX, chunkMaxX, chunkMinY, chunkMaxY))
+                if (!HasRenderableQuads(points, chunkMinX, chunkMaxX, chunkMinY, chunkMaxY))
                 {
                     continue;
                 }
@@ -136,10 +136,8 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         _device = device;
 
         // Helper function to map data coordinates to world coordinates
-        Vector3 GetWorldPosition(int dataX, int dataZ)
+        Vector3 GetWorldPosition(LandscapePoint point, int dataX, int dataZ)
         {
-            var point = _landscapeData[dataX, dataZ];
-
             // Map X from data coordinates to world coordinates
             var worldX = _dataMaxX == _dataMinX
                 ? WorldMinX
@@ -150,10 +148,7 @@ public class LandscapeChunk : IOctreeItem, IRenderable
                 ? WorldMinZ
                 : WorldMinZ + (dataZ - _dataMinZ) / (float)(_dataMaxZ - _dataMinZ) * (WorldMaxZ - WorldMinZ);
 
-            // Height is already in world coordinates (from LandscapePoint)
-            var worldY = point?.Height ?? 0;
-
-            return new Vector3(worldX, worldY, worldZ);
+            return new Vector3(worldX, point.Height, worldZ);
         }
 
         // Calculate number of quads and triangles
@@ -167,53 +162,80 @@ public class LandscapeChunk : IOctreeItem, IRenderable
         {
             for (var x = _dataMinX; x < _dataMaxX; x++)
             {
-                // Get positions for the four corners of the quad
-                var lowerLeft = GetWorldPosition(x, z);
-                var lowerRight = GetWorldPosition(x + 1, z);
-                var topLeft = GetWorldPosition(x, z + 1);
-                var topRight = GetWorldPosition(x + 1, z + 1);
+                var pointLL = _landscapeData[x, z];
+                var pointLR = _landscapeData[x + 1, z];
+                var pointTL = _landscapeData[x, z + 1];
+                var pointTR = _landscapeData[x + 1, z + 1];
 
-                // Get colors for each corner (pre-calculated)
-                var colorLL = _landscapeData[x, z]?.Color;
-                var colorLR = _landscapeData[x + 1, z]?.Color;
-                var colorTL = _landscapeData[x, z + 1]?.Color;
-                var colorTR = _landscapeData[x + 1, z + 1]?.Color;
+                if (pointLL is null || pointLR is null || pointTL is null || pointTR is null)
+                {
+                    continue;
+                }
 
-                colorLL ??= Color.Pink;
-                colorLR ??= Color.Pink;
-                colorTL ??= Color.Pink;
-                colorTR ??= Color.Pink;
+                var lowerLeft = GetWorldPosition(pointLL, x, z);
+                var lowerRight = GetWorldPosition(pointLR, x + 1, z);
+                var topLeft = GetWorldPosition(pointTL, x, z + 1);
+                var topRight = GetWorldPosition(pointTR, x + 1, z + 1);
 
                 if ((x % 2) == 0 ^ (z % 2) == 0)
                 {
                     // First triangle: topLeft, lowerRight, lowerLeft
                     triangles.Add(new ColoredTrianglesModel.Triangle(
                         topLeft, lowerRight, lowerLeft,
-                        colorTL.Value, colorLR.Value, colorLL.Value));
+                        pointTL.Color, pointLR.Color, pointLL.Color));
 
                     // Second triangle: topLeft, topRight, lowerRight
                     triangles.Add(new ColoredTrianglesModel.Triangle(
                         topLeft, topRight, lowerRight,
-                        colorTL.Value, colorTR.Value, colorLR.Value));
+                        pointTL.Color, pointTR.Color, pointLR.Color));
                 }
                 else
                 {
                     // First triangle: topLeft, topRight, lowerLeft
                     triangles.Add(new ColoredTrianglesModel.Triangle(
                         topLeft, topRight, lowerLeft,
-                        colorTL.Value, colorTR.Value, colorLL.Value));
+                        pointTL.Color, pointTR.Color, pointLL.Color));
 
                     // Second triangle: lowerLeft, topRight, lowerRight
                     triangles.Add(new ColoredTrianglesModel.Triangle(
                         lowerLeft, topRight, lowerRight,
-                        colorLL.Value, colorTR.Value, colorLR.Value));
+                        pointLL.Color, pointTR.Color, pointLR.Color));
                 }
             }
+        }
+
+        if (triangles.Count == 0)
+        {
+            return;
         }
 
         _model = new ColoredTrianglesModel(_effectSet, triangles);
 
         _model.SetDevice(device);
+    }
+
+    private static bool HasRenderableQuads(
+        IReadOnlySparse2dArray<LandscapePoint> landscapeData,
+        int dataMinX,
+        int dataMaxX,
+        int dataMinZ,
+        int dataMaxZ)
+    {
+        for (var z = dataMinZ; z < dataMaxZ; z++)
+        {
+            for (var x = dataMinX; x < dataMaxX; x++)
+            {
+                if (landscapeData[x, z] is not null &&
+                    landscapeData[x + 1, z] is not null &&
+                    landscapeData[x, z + 1] is not null &&
+                    landscapeData[x + 1, z + 1] is not null)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public int TriangleCount => _model?.TriangleCount ?? 0;
@@ -238,9 +260,12 @@ public class LandscapeChunk : IOctreeItem, IRenderable
             throw new InvalidOperationException("LandscapeChunk does not support transparency.");
         }
 
-        var model = _model ?? throw new InvalidOperationException("Model has not been built. Call BuildModel() first.");
+        if (_model == null)
+        {
+            return;
+        }
 
-        model.Render(renderContext, renderParameters);
+        _model.Render(renderContext, renderParameters);
     }
 
     public BoundingSphere GetBoundingSphere()

@@ -121,10 +121,6 @@ public class World : IRenderable
         }
 
         _testObjModel!.RenderInstanced(renderContext, renderParameters, matrices);
-
-        //var moveMatrix = Matrix.CreateTranslation(60f, 800f, -900f);
-        //effect.Parameters["xWorld"].SetValue(moveMatrix);
-        //_testObjModel!.Render(effect, renderContext);
     }
 
     public BoundingSphere GetBoundingSphere()

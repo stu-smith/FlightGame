@@ -126,6 +126,11 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
 
     public void Render(RenderContext renderContext, RenderParameters renderParameters)
     {
+        if (_vertices.Length == 0 || _indices.Length == 0)
+        {
+            return;
+        }
+
         if (_vertexBuffer == null || _indexBuffer == null)
         {
             throw new InvalidOperationException("Graphics device not set. Call SetDevice() before rendering.");
@@ -165,7 +170,7 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
         IReadOnlyList<Matrix> worldMatrices
     )
     {
-        if (worldMatrices == null || worldMatrices.Count == 0)
+        if (worldMatrices == null || worldMatrices.Count == 0 || _vertices.Length == 0)
         {
             return;
         }
@@ -237,7 +242,7 @@ public class ColoredTrianglesModel : IRenderable, IMultiInstanceRenderer
 
     public void SetDevice(GraphicsDevice device)
     {
-        if (_vertexBuffer != null)
+        if (_vertexBuffer != null || _vertices.Length == 0)
         {
             return;
         }

@@ -1,10 +1,7 @@
-using FlightGame.Models.Landscape;
 using FlightGame.Rendering;
 using FlightGame.Rendering.Core;
-using FlightGame.Rendering.Landscape;
-using FlightGame.Rendering.Models;
 using FlightGame.Rendering.Water;
-using FlightGame.World.Actors.Scenery.Trees;
+using FlightGame.World.WorldBuilders;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -16,56 +13,17 @@ public class World : IRenderable
     private const float _worldSize = 20_000;
 
     private GraphicsDevice? _device;
+    private readonly IWorldBuilder _worldBuilder;
     private readonly Octree<IRenderable> _octree = new(_worldSize);
-
-    private ObjModel? _testObjModel;
     private readonly WaterRenderer _waterRenderer = new(EffectSet.WaterTropical);
 
-    public World()
+    public World(IWorldBuilder worldBuilder)
     {
-        var rnd = new Random();
+        _worldBuilder = worldBuilder;
 
-        var landscapeModel = new LandscapeModel(_worldSize);
-
-        for (var i = 0; i < 30; i++)
+        foreach (var chunk in worldBuilder.BuildChunks(_worldSize))
         {
-            var x = rnd.Next(landscapeModel.MinLandscapeX, landscapeModel.MaxLandscapeX);
-            var y = rnd.Next(landscapeModel.MinLandscapeY, landscapeModel.MaxLandscapeY);
-            var heightScaling = (float)(rnd.NextDouble() * 50.0 + 10.0);
-
-            landscapeModel.AddHeightMap("HeightMaps/TestIsland", x, y, heightScaling);
-        }
-
-        // Define color stops based on height: sandy at bottom, grassy in middle, snowy at top
-        var colorStops = new List<(float Height, Color Color)>
-        {
-            (0f, new (238, 203, 173)),  // Sandy beige at sea level
-            (5f, new (210, 180, 140)),  // Light sandy brown
-            (10f, new (139, 115, 85)),  // Medium sandy brown
-            (15f, new (34, 139, 34)),   // Forest green (transition to grass)
-            (25f, new (0, 128, 0)),     // Dark green (grass)
-            (35f, new (144, 238, 144)), // Light green (higher grass)
-            (40f, new (192, 192, 192)), // Light gray (rocky/snow transition)
-            (45f, new (245, 245, 255)), // Light blue-white (snow)
-            (50f, Color.White)               // Pure white (snow at peak)
-        };
-
-        landscapeModel.AutoAssignColors(colorStops);
-
-        var landscapeChunks = LandscapeChunk.CreateChunksFromLandscape(landscapeModel, EffectSet.Colored);
-
-        foreach (var chunk in landscapeChunks)
-        {
-            var worldChunk = new WorldChunk(chunk);
-
-            worldChunk.AddRandomSceneryActors(
-                PineTree.CreateAtPosition,
-                minHeight: 10f,
-                maxHeight: 200f,
-                count: 20
-            );
-
-            _octree.Insert(worldChunk);
+            _octree.Insert(chunk);
         }
     }
 
@@ -73,13 +31,12 @@ public class World : IRenderable
     {
         _device = device;
 
-        var allChunks = _octree.GetAllItems();
-
-        foreach (var item in allChunks)
+        foreach (var item in _octree.GetAllItems())
         {
             item.SetDevice(device);
         }
 
+        _worldBuilder.SetDevice(device);
         _waterRenderer.SetDevice(device);
     }
 
@@ -99,35 +56,21 @@ public class World : IRenderable
             throw new InvalidOperationException("View frustum is not set in render context.");
         }
 
-        var allChunks = _octree.Query(renderContext.ViewFrustum);
+        var visibleChunks = _octree.Query(renderContext.ViewFrustum);
 
-        foreach (var item in allChunks)
+        foreach (var item in visibleChunks)
         {
             item.Render(renderContext, renderParameters);
         }
 
-        // Render water surface
         _waterRenderer.Render(renderContext, renderParameters);
-
-        var matrices = new List<Matrix>();
-
-        for(var x = -1000; x <= 1000; x += 50)
-        {
-            for(var z = -1000; z <= 1000; z += 50)
-            {
-                var translation = Matrix.CreateTranslation(x, 800f, z);
-                matrices.Add(translation);
-            }
-        }
-
-        _testObjModel!.RenderInstanced(renderContext, renderParameters, matrices);
+        _worldBuilder.RenderAdditional(renderContext, renderParameters);
     }
 
     public BoundingSphere GetBoundingSphere()
     {
         var halfSize = _worldSize / 2;
         var center = Vector3.Zero;
-        // For a cube, the radius is half the diagonal length
         var radius = (float)(halfSize * Math.Sqrt(3.0));
         return new BoundingSphere(center, radius);
     }
@@ -139,9 +82,6 @@ public class World : IRenderable
             throw new InvalidOperationException("Graphics device is not initialized.");
         }
 
-        const string assetName = "Models/Test";
-
-        _testObjModel = new(EffectSet.Colored, content, assetName);
-        _testObjModel!.SetDevice(_device);
+        _worldBuilder.LoadContent(content, _device);
     }
 }

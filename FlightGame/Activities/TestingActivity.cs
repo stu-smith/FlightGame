@@ -2,6 +2,7 @@ using FlightGame.Rendering;
 using FlightGame.Rendering.Cameras;
 using FlightGame.Rendering.Core;
 using FlightGame.World.Actors.Scenery.Trees;
+using FlightGame.World.WorldBuilders;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -43,7 +44,7 @@ public class TestingActivity : IActivity
         PineTree.LoadContent(context.Content);
         PineTree.SetDevice(device);
 
-        _world = new World.Worlds.World();
+        _world = new World.Worlds.World(new TestingWorldBuilder());
         _world.SetDevice(device);
         _world.LoadContent(context.Content);
     }
